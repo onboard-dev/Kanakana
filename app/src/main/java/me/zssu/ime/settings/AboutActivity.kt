@@ -83,7 +83,7 @@ private fun AboutScreen() {
     Scaffold(
         topBar = {
             CenterAlignedTopAppBar(
-                title = { Text("Komorebi IME について") },
+                title = { Text("KanaKana について") },
                 navigationIcon = {
                     IconButton(onClick = { (context as? ComponentActivity)?.finish() }) {
                         Icon(Icons.AutoMirrored.Filled.ArrowBack, "戻る")
@@ -150,16 +150,16 @@ private fun AboutScreen() {
             }
             Card(shape = RoundedCornerShape(14.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text("Komorebi IME", style = MaterialTheme.typography.titleMedium)
-                    Text("ZenSky Project が soichi11208/Zinna-IME をフォークし、変更・配布している版です。", style = MaterialTheme.typography.bodyMedium)
-                    Text("ライセンス: Apache License 2.0\nパッケージ: me.zssu.ime\n連絡先: support@zslink.xyz",
+                    Text("KanaKana", style = MaterialTheme.typography.titleMedium)
+                    Text("ZenSky Project の Komorebi IME(soichi11208/Zinna-IME のフォーク)をさらにフォークし、ハードウェア JIS キーボードのかな入力に対応させた版です。", style = MaterialTheme.typography.bodyMedium)
+                    Text("ライセンス: Apache License 2.0\nパッケージ: jp.kanakana.ime\nKomorebi IME / Zinna-IME の著作権表示は「ライセンス」に記載",
                         style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        OutlinedButton(onClick = { uriHandler.openUri("https://github.com/soichi11208/Zinna-IME") }, modifier = Modifier.weight(1f)) {
+                        OutlinedButton(onClick = { uriHandler.openUri("https://github.com/zenskypj/Komorebi-IME") }, modifier = Modifier.weight(1f)) {
                             Icon(Icons.Filled.Share, null, androidx.compose.ui.Modifier.size(16.dp))
                             Text("フォーク元")
                         }
-                        OutlinedButton(onClick = { uriHandler.openUri("mailto:support@zslink.xyz") }, modifier = Modifier.weight(1f)) {
+                        OutlinedButton(onClick = { uriHandler.openUri("https://github.com/onboard-dev/Kanakana/issues") }, modifier = Modifier.weight(1f)) {
                             Text("問い合わせ")
                         }
                     }

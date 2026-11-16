@@ -98,6 +98,7 @@ class MozcSession(
     private var styleGeneration = -1L
     private var configApplied = false
     private var configuredFullWidthSpace: Boolean? = null
+    private var configuredKanaInput: Boolean? = null
     private var incognito = false
     private var phoneToggleEnabled = false
     private var deletableCandidateIds: Set<Int> = emptySet()
@@ -120,6 +121,7 @@ class MozcSession(
             currentStyle = null
             configApplied = false
             configuredFullWidthSpace = null
+            configuredKanaInput = null
             styleGeneration = engine.sessionGeneration
         }
         val effectiveStyle = if (phoneToggleEnabled && style == InputStyle.FLICK_HIRAGANA) {
@@ -210,6 +212,18 @@ class MozcSession(
         return engine?.sendKey(key.build(), clientContext)?.toState()
     }
 
+    /**
+     * Sends one kana from a physical JIS keyboard.
+     *
+     * Mozc's kana input wants both halves of the keystroke: the US key legend as `key_code` and
+     * the kana printed on the key as `key_string`. The kana table is keyed on the latter, which is
+     * what lets it compose ゛/゜ onto the preceding kana.
+     */
+    fun sendKana(kana: String, ascii: Char): State? {
+        val key = KeyEvent.newBuilder().setKeyCode(ascii.code).setKeyString(kana)
+        return engine?.sendKey(key.build(), clientContext)?.toState()
+    }
+
     fun sendSpecialKey(
         specialKey: KeyEvent.SpecialKey,
         shift: Boolean = false,
@@ -271,7 +285,8 @@ class MozcSession(
      */
     private fun applyConfig(engine: MozcEngine) {
         val fullWidthSpace = requestedStyle?.fullWidthSpace ?: false
-        if (configApplied && configuredFullWidthSpace == fullWidthSpace) return
+        val kanaInput = requestedStyle == InputStyle.HARDWARE_KANA
+        if (configApplied && configuredFullWidthSpace == fullWidthSpace && configuredKanaInput == kanaInput) return
         val output = engine.eval(Input.newBuilder().setType(Input.CommandType.GET_CONFIG))
         val builder =
             if (output != null && output.hasConfig()) output.config.toBuilder()
@@ -284,6 +299,9 @@ class MozcSession(
                         .setSpaceCharacterForm(
                             if (fullWidthSpace) Config.FundamentalCharacterForm.FUNDAMENTAL_FULL_WIDTH
                             else Config.FundamentalCharacterForm.FUNDAMENTAL_HALF_WIDTH
+                        )
+                        .setPreeditMethod(
+                            if (kanaInput) Config.PreeditMethod.KANA else Config.PreeditMethod.ROMAN
                         )
                         .setUseTypingCorrection(typingCorrection)
                         .setUseKanaModifierInsensitiveConversion(typingCorrection)
@@ -298,6 +316,7 @@ class MozcSession(
         )
         configApplied = true
         configuredFullWidthSpace = fullWidthSpace
+        configuredKanaInput = kanaInput
     }
 
     /**

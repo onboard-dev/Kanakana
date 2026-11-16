@@ -187,6 +187,8 @@ class ZinnaImeService : InputMethodService() {
 
     override fun onCreate() {
         super.onCreate()
+        getSystemService(android.hardware.input.InputManager::class.java)
+            ?.registerInputDeviceListener(inputDeviceListener, mainHandler)
         repository = LayoutRepository(this)
         settings = ImeSettings(this)
         appProfiles = AppProfileStore(this)
@@ -522,7 +524,8 @@ class ZinnaImeService : InputMethodService() {
 
         candidates.onPanelExpanded = { expanded ->
             if (expanded) confirmCommitsWholeSentence = false
-            keyboard.visibility = if (expanded) View.GONE else View.VISIBLE
+            candidatePanelExpanded = expanded
+            keyboard.visibility = if (expanded || compactForHardwareKeyboard()) View.GONE else View.VISIBLE
             menuButton.visibility = if (expanded) View.GONE else View.VISIBLE
             segmentBar?.visibility = if (!expanded && isConverting && segmentEditing) View.VISIBLE else View.GONE
         }
@@ -553,6 +556,22 @@ class ZinnaImeService : InputMethodService() {
             orientation = LinearLayout.HORIZONTAL
             addView(menuButton, LinearLayout.LayoutParams(menuButtonWidth, stripHeight))
             addView(candidates, LinearLayout.LayoutParams(0, stripHeight, 1f))
+            // Only offered while a physical keyboard is attached: brings the on-screen keys back.
+            addView(android.widget.TextView(this@ZinnaImeService).apply {
+                text = "⌨"
+                textSize = 20f
+                gravity = Gravity.CENTER
+                contentDescription = "画面キーボードの表示切替"
+                setTextColor(this@ZinnaImeService.theme.candidateTextColor)
+                setBackgroundColor(this@ZinnaImeService.theme.toolbarBackgroundColor)
+                isFocusable = false
+                visibility = View.GONE
+                setOnClickListener {
+                    softKeyboardRequested = !softKeyboardRequested
+                    applyHardwareKeyboardLayout()
+                }
+                keyboardToggleButton = this
+            }, LinearLayout.LayoutParams(menuButtonWidth, stripHeight))
         }
         content.addView(candidateRow, LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, LinearLayout.LayoutParams.WRAP_CONTENT))
         val segments = LinearLayout(this).apply {
@@ -612,6 +631,8 @@ class ZinnaImeService : InputMethodService() {
         keyboard.onRepeatStopped = inputQueue::cancelRepeats
         keyboard.onTrackpadMove = { delta -> enqueueInput(repeated = keyboard.isRepeatingOutput) { handleCursorMove(delta, adjustSegment = false, forceClauseMove = true)  } }
         keyboardView = keyboard
+        candidatePanelExpanded = false
+        applyHardwareKeyboardLayout()
         meaningPopup = popupView
         builtFromRevision = combinedRevision()
         builtStructureFingerprint = viewStructureFingerprint()
@@ -1398,6 +1419,7 @@ class ZinnaImeService : InputMethodService() {
             me.zssu.ime.settings.DressUpLivePreview.listener = null
         }
         panelView?.setMediaActive(!nextPolicy.incognito)
+        applyHardwareKeyboardLayout()
         val nextCorrection = activeProfile?.typingCorrection ?: true
         val nextToggle = settings.flickInputMode == ImeSettings.FlickInputMode.FLICK_AND_TOGGLE
         val nextStyle = layout?.inputStyle
@@ -1624,9 +1646,12 @@ class ZinnaImeService : InputMethodService() {
     }
 
     override fun onDestroy() {
+        getSystemService(android.hardware.input.InputManager::class.java)
+            ?.unregisterInputDeviceListener(inputDeviceListener)
         closeHandwriting()
         handwritingScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         toolMenuButton = null
+        keyboardToggleButton = null
         if (voicePanelActive) closeVoicePanel()
         voicePending = null
         TextToolRequest.pending = null
@@ -1653,6 +1678,159 @@ class ZinnaImeService : InputMethodService() {
             // The optional neural model is the largest reclaimable allocation. Mozc remains warm,
             // so ordinary input is instant and Karukan is loaded again only if explicitly used.
             karukanEngine.unload()
+        }
+    }
+
+    // ---- Physical (JIS) keyboard -------------------------------------------------------------
+
+    private var keyboardToggleButton: android.widget.TextView? = null
+    private var candidatePanelExpanded = false
+    /** The user asked for the on-screen keys even though a physical keyboard is attached. */
+    private var softKeyboardRequested = false
+
+    private fun hardwareKeyboardAttached(): Boolean =
+        android.view.InputDevice.getDeviceIds().any { id ->
+            val device = android.view.InputDevice.getDevice(id) ?: return@any false
+            !device.isVirtual &&
+                device.keyboardType == android.view.InputDevice.KEYBOARD_TYPE_ALPHABETIC &&
+                device.sources and android.view.InputDevice.SOURCE_KEYBOARD == android.view.InputDevice.SOURCE_KEYBOARD
+        }
+
+    /**
+     * Follows the keyboard being connected or switched off. Checking only when an editor gains focus
+     * left the compact bar in place after the keyboard went away, because tapping the field that
+     * already has focus starts no new input session.
+     */
+    private val inputDeviceListener = object : android.hardware.input.InputManager.InputDeviceListener {
+        override fun onInputDeviceAdded(deviceId: Int) {
+            // A newly attached keyboard starts out compact; an earlier request for the on-screen
+            // keys belonged to the previous session.
+            softKeyboardRequested = false
+            applyHardwareKeyboardLayout()
+        }
+        override fun onInputDeviceRemoved(deviceId: Int) = applyHardwareKeyboardLayout()
+        override fun onInputDeviceChanged(deviceId: Int) = applyHardwareKeyboardLayout()
+    }
+
+    /** With a physical keyboard attached the on-screen keys go away and only the candidate bar stays. */
+    private fun compactForHardwareKeyboard(): Boolean =
+        ::settings.isInitialized && settings.hardwareKanaEnabled && !softKeyboardRequested &&
+            hardwareKeyboardAttached()
+
+    private fun applyHardwareKeyboardLayout() {
+        keyboardView?.visibility =
+            if (candidatePanelExpanded || compactForHardwareKeyboard()) View.GONE else View.VISIBLE
+        keyboardToggleButton?.visibility =
+            if (!candidatePanelExpanded && ::settings.isInitialized && settings.hardwareKanaEnabled &&
+                hardwareKeyboardAttached()) View.VISIBLE else View.GONE
+    }
+
+    /** Kana input vs. direct (US-style) input on the physical keyboard. 半角/全角 flips it. */
+    private var hardwareKanaOn = true
+    private val hardwareConsumedKeys = HashSet<Int>()
+
+    /**
+     * Android hides the on-screen keyboard while a physical one is attached. That would also hide
+     * the candidate bar, which is the only place conversion candidates are shown.
+     */
+    override fun onEvaluateInputViewShown(): Boolean =
+        if (::settings.isInitialized && settings.hardwareKanaEnabled) true else super.onEvaluateInputViewShown()
+
+    override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        if (handlePhysicalKey(keyCode, event)) {
+            hardwareConsumedKeys.add(keyCode)
+            return true
+        }
+        return super.onKeyDown(keyCode, event)
+    }
+
+    override fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        // Swallow the release of any key whose press we took, or the editor sees an orphan ACTION_UP.
+        if (hardwareConsumedKeys.remove(keyCode)) return true
+        return super.onKeyUp(keyCode, event)
+    }
+
+    /** Returns true when the press was taken by the IME; false lets the editor have it unchanged. */
+    private fun handlePhysicalKey(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        if (!::settings.isInitialized || !settings.hardwareKanaEnabled) return false
+        if (event.deviceId == android.view.KeyCharacterMap.VIRTUAL_KEYBOARD) return false
+        if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
+        // Passwords, URLs, e-mail addresses and terminals want plain ASCII keys.
+        if (fieldPolicy.plane != InputFieldPolicy.Plane.USER_DEFAULT || fieldPolicy.rawKeyEvents) return false
+
+        if (Log.isLoggable(TAG, Log.DEBUG)) {
+            Log.d(TAG, "hw key code=$keyCode scan=${event.scanCode} shift=${event.isShiftPressed} kana=$hardwareKanaOn composing=$isComposing")
+        }
+        val command = HardwareKana.classify(
+            keyCode = keyCode,
+            scanCode = event.scanCode,
+            shift = event.isShiftPressed,
+            kanaOn = hardwareKanaOn,
+            composing = isComposing,
+        )
+        when (command) {
+            HardwareKana.Command.Pass -> return false
+            HardwareKana.Command.ToggleKana -> setHardwareKana(!hardwareKanaOn)
+            HardwareKana.Command.KanaOn -> setHardwareKana(true)
+            HardwareKana.Command.KanaOff -> setHardwareKana(false)
+            else -> {
+                if (voicePanelActive) closeVoicePanel()
+                val shift = event.isShiftPressed
+                val correction = activeProfile?.typingCorrection ?: true
+                val incognito = fieldPolicy.incognito
+                enqueueInput(repeated = event.repeatCount > 0) {
+                    session.setIncognitoMode(incognito)
+                    session.setTypingCorrectionEnabled(correction)
+                    // The soft keyboard may have been used last; its table and the kana table differ.
+                    if (session.inputStyle != me.zssu.ime.keyboard.InputStyle.HARDWARE_KANA) {
+                        submitCurrentComposition()
+                        session.applyInputStyle(me.zssu.ime.keyboard.InputStyle.HARDWARE_KANA)
+                    }
+                    handleHardwareCommand(command, shift)
+                }
+            }
+        }
+        return true
+    }
+
+    private fun setHardwareKana(on: Boolean) {
+        if (hardwareKanaOn == on) return
+        hardwareKanaOn = on
+        // Whatever was being typed belongs to the mode that is ending.
+        if (!on && isComposing) enqueueInput { submitCurrentComposition() }
+    }
+
+    private suspend fun handleHardwareCommand(command: HardwareKana.Command, shift: Boolean) {
+        prepareClientContext()
+        if (command !is HardwareKana.Command.Space && command !is HardwareKana.Command.Convert &&
+            command !is HardwareKana.Command.Enter
+        ) {
+            confirmCommitsWholeSentence = false
+        }
+        editAnchor = null
+        when (command) {
+            is HardwareKana.Command.Kana -> {
+                cancelKarukanConversion()
+                render(session.sendKana(command.text, command.ascii))
+            }
+            HardwareKana.Command.Space, HardwareKana.Command.Convert -> handleSpace()
+            HardwareKana.Command.Enter -> handleEnter()
+            HardwareKana.Command.Backspace -> handleBackspace()
+            HardwareKana.Command.Delete -> {
+                cancelKarukanConversion()
+                render(session.sendSpecialKey(KeyEvent.SpecialKey.DEL))
+            }
+            // Arrows inside a composition. Shift+arrow resizes the focused clause while converting.
+            HardwareKana.Command.Left -> handleCursorMove(-1, adjustSegment = isConverting && shift)
+            HardwareKana.Command.Right -> handleCursorMove(1, adjustSegment = isConverting && shift)
+            HardwareKana.Command.Up -> render(session.sendSpecialKey(KeyEvent.SpecialKey.UP))
+            HardwareKana.Command.Down -> render(session.sendSpecialKey(KeyEvent.SpecialKey.DOWN))
+            HardwareKana.Command.Escape -> {
+                cancelKarukanConversion(clearReading = true, revertMozc = false)
+                render(session.sendSpecialKey(KeyEvent.SpecialKey.ESCAPE))
+            }
+            // Mode keys and pass-through never reach here.
+            else -> Unit
         }
     }
 
@@ -1691,7 +1869,8 @@ class ZinnaImeService : InputMethodService() {
         }
     }
 
-    private suspend fun handleKeyOutput(output: KeyOutput, key: KeySpec, direction: FlickDirection) {
+    /** Syncs with the editor and gives Mozc the text before the caret, which it uses for ranking. */
+    private suspend fun prepareClientContext() {
         synchronizeEditorComposition()
         val clientContext = org.mozc.android.inputmethod.japanese.protobuf.ProtoCommands.Context.newBuilder()
         if (fieldPolicy.incognito) {
@@ -1703,6 +1882,10 @@ class ZinnaImeService : InputMethodService() {
                 else if (before.endsWith(prefix)) before.dropLast(prefix.length).takeLast(80) else ""
         }
         session.clientContext = clientContext.build()
+    }
+
+    private suspend fun handleKeyOutput(output: KeyOutput, key: KeySpec, direction: FlickDirection) {
+        prepareClientContext()
         val action = output.action
         if (action !is KeyAction.MoveCursor) editAnchor = null
         if (action !is KeyAction.Space && action !is KeyAction.Convert && action !is KeyAction.Enter) {

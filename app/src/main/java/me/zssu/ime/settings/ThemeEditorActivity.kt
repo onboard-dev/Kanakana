@@ -341,7 +341,7 @@ private fun ThemeEditorScreen() {
                         },
                         modifier = Modifier.fillMaxWidth(),
                     )
-                    if (!previewVisible) Text("Komorebi IMEを選択して試してください", style = MaterialTheme.typography.labelSmall)
+                    if (!previewVisible) Text("KanaKanaを選択して試してください", style = MaterialTheme.typography.labelSmall)
                 }
             }
             val controls: @Composable (Modifier) -> Unit = { modifier ->

@@ -11,7 +11,7 @@ internal object InputPerformance {
         val prefs = context.getSharedPreferences("input_performance", Context.MODE_PRIVATE)
         val settings = me.zssu.ime.settings.ImeSettings(context)
         return buildString {
-            appendLine("Komorebi IME 性能診断 / Android API ${android.os.Build.VERSION.SDK_INT}")
+            appendLine("KanaKana 性能診断 / Android API ${android.os.Build.VERSION.SDK_INT}")
             val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
             appendLine("アプリ版: $version / 機種: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
             appendLine("入力処理エラー: ${prefs.getLong("error_count", 0)} 回")

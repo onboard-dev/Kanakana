@@ -139,7 +139,7 @@
         <activity
             android:name=".settings.AboutActivity"
             android:exported="false"
-            android:label="Komorebi IME について"
+            android:label="KanaKana について"
             android:parentActivityName=".settings.SettingsActivity" />
 
         <activity

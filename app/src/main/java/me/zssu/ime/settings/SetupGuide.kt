@@ -24,7 +24,7 @@ internal fun SetupGuide(enabled: Boolean, selected: Boolean) {
             if (!enabled) OutlinedButton(onClick = {
                 context.startActivity(Intent(Settings.ACTION_INPUT_METHOD_SETTINGS))
             }) { Text("Androidの設定を開く") }
-            Text("${if (selected) "✓" else "2."} Komorebi IMEを選ぶ")
+            Text("${if (selected) "✓" else "2."} KanaKanaを選ぶ")
             if (enabled && !selected) OutlinedButton(onClick = {
                 context.getSystemService(InputMethodManager::class.java)?.showInputMethodPicker()
             }) { Text("キーボードを選ぶ") }

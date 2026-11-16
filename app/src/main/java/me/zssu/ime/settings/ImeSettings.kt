@@ -28,6 +28,10 @@ class ImeSettings(context: Context) {
     enum class OneHandMode { OFF, LEFT, RIGHT }
     enum class FlickInputMode { FLICK_ONLY, FLICK_AND_TOGGLE }
     enum class ConversionEngine { AUTO, MOZC, KARUKAN }
+    /** Handle a physical JIS keyboard as kana input (and keep the candidate bar on screen for it). */
+    var hardwareKanaEnabled: Boolean
+        get() = prefs.getBoolean("hardware_kana_enabled", true)
+        set(value) { prefs.edit().putBoolean("hardware_kana_enabled", value).apply(); bumpRevision() }
     var zenzaiPlusEnabled: Boolean
         get() = prefs.getBoolean("zenzai_plus_enabled", false)
         set(value) { prefs.edit().putBoolean("zenzai_plus_enabled", value).apply(); bumpRevision() }
