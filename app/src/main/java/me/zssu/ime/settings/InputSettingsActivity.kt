@@ -60,6 +60,7 @@ private fun InputSettingsScreen() {
     var flickInputMode by remember { mutableStateOf(settings.flickInputMode) }
     var guide by remember { mutableStateOf(settings.flickGuideStyle) }
     var hapticFeedback by remember { mutableStateOf(settings.hapticFeedbackEnabled) }
+    var hardwareKana by remember { mutableStateOf(settings.hardwareKanaEnabled) }
 
     Scaffold(
         topBar = {
@@ -87,6 +88,23 @@ private fun InputSettingsScreen() {
                         Chip(style == KeyboardStyle.QWERTY, "QWERTY") { style = KeyboardStyle.QWERTY; settings.keyboardStyle = KeyboardStyle.QWERTY }
                         Chip(style == KeyboardStyle.MIXED, "英字だけQWERTY") { style = KeyboardStyle.MIXED; settings.keyboardStyle = KeyboardStyle.MIXED }
                         Chip(style == KeyboardStyle.KANA_QWERTY, "かなだけQWERTY") { style = KeyboardStyle.KANA_QWERTY; settings.keyboardStyle = KeyboardStyle.KANA_QWERTY }
+                    }
+                }
+            }
+
+            Card(shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("ハードウェアキーボード(JISかな入力)", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "Bluetooth などの JIS キーボードで、キーに印字されたかなどおりに入力します。" +
+                            "接続中は画面のキーを隠して候補バーだけを表示します(バー右端の ⌨ で画面キーボードを出せます)。" +
+                            "切替: 半角/全角 ほか、かなキーでオン、無変換・英数でオフ。" +
+                            "パスワード、URL、メールアドレス欄では英数入力のままです",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Chip(hardwareKana, "オン") { hardwareKana = true; settings.hardwareKanaEnabled = true }
+                        Chip(!hardwareKana, "オフ") { hardwareKana = false; settings.hardwareKanaEnabled = false }
                     }
                 }
             }

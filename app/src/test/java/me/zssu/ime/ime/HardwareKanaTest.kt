@@ -80,6 +80,14 @@ class HardwareKanaTest {
         assertEquals(Command.Backspace, classify(KeyEvent.KEYCODE_DEL, composing = true))
     }
 
+    @Test fun functionKeysConvertOnlyWhileComposing() {
+        assertEquals(Command.Function(7), classify(KeyEvent.KEYCODE_F7, composing = true))
+        assertEquals(Command.Function(6), classify(KeyEvent.KEYCODE_F6, composing = true))
+        assertEquals(Command.Function(10), classify(KeyEvent.KEYCODE_F10, composing = true))
+        assertEquals(Command.Pass, classify(KeyEvent.KEYCODE_F7, composing = false))
+        assertEquals(Command.Pass, classify(KeyEvent.KEYCODE_F5, composing = true))
+    }
+
     @Test fun spaceAndKanaAreAlwaysOursInKanaMode() {
         assertEquals(Command.Space, classify(KeyEvent.KEYCODE_SPACE))
         assertEquals("か", (classify(KeyEvent.KEYCODE_T, scan = 20) as Command.Kana).text)

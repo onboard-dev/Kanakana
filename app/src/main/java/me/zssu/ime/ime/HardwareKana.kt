@@ -30,6 +30,9 @@ internal object HardwareKana {
         data object Down : Command
         data object Escape : Command
 
+        /** F6-F10: Mozc's one-key conversion to hiragana, katakana, half-width and full-width latin. */
+        data class Function(val number: Int) : Command
+
         /** 半角/全角: flip between kana and direct input. */
         data object ToggleKana : Command
         data object KanaOn : Command
@@ -115,6 +118,7 @@ internal object HardwareKana {
             KeyEvent.KEYCODE_DPAD_UP -> Command.Up
             KeyEvent.KEYCODE_DPAD_DOWN -> Command.Down
             KeyEvent.KEYCODE_ESCAPE -> Command.Escape
+            in KeyEvent.KEYCODE_F6..KeyEvent.KEYCODE_F10 -> Command.Function(keyCode - KeyEvent.KEYCODE_F1 + 1)
             else -> Command.Pass
         }
     }

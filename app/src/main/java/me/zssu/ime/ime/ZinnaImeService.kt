@@ -1829,6 +1829,17 @@ class ZinnaImeService : InputMethodService() {
                 cancelKarukanConversion(clearReading = true, revertMozc = false)
                 render(session.sendSpecialKey(KeyEvent.SpecialKey.ESCAPE))
             }
+            is HardwareKana.Command.Function -> {
+                cancelKarukanConversion(clearReading = true, revertMozc = false)
+                val key = when (command.number) {
+                    6 -> KeyEvent.SpecialKey.F6
+                    7 -> KeyEvent.SpecialKey.F7
+                    8 -> KeyEvent.SpecialKey.F8
+                    9 -> KeyEvent.SpecialKey.F9
+                    else -> KeyEvent.SpecialKey.F10
+                }
+                render(session.sendSpecialKey(key))
+            }
             // Mode keys and pass-through never reach here.
             else -> Unit
         }

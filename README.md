@@ -1,3 +1,59 @@
+# KanaKana
+
+Bluetooth などの **JIS キーボードで「かな入力」ができる** Android 向け日本語 IME です。
+[Komorebi IME](https://github.com/zenskypj/Komorebi-IME)(ZenSky Project)のフォークで、
+Komorebi の機能(フリック・QWERTY、Mozc 変換、Karukan、ユーザー辞書、きせかえなど)はそのまま使えます。
+上流の README は、この下に原文のまま残しています。
+
+## KanaKana で追加したこと
+
+- **JIS かな入力**: キーに印字されたかなどおりに入力します(か → `T`、゛ → `@`、゜ → `[`)。
+  濁点・半濁点・小書き文字(`Shift`+`7` で ゃ など)は Mozc のかな入力モードが合成します。
+- **候補バーのみの表示**: ハードウェアキーボードの接続中は、画面のキーを隠して候補バーだけを表示します。
+  バー右端の `⌨` で画面キーボードを出せます。キーボードを外すと自動で戻ります。
+- **パスワード、URL、メールアドレス欄、ターミナル**では、これまでどおり英数入力になります。
+- 設定: 設定 → 入力方式 → 「ハードウェアキーボード(JISかな入力)」で、オン/オフを切り替えられます。
+
+### キー操作
+
+| キー | 動作 |
+|---|---|
+| 半角/全角 | かな入力 ⇄ 英数入力 |
+| かな(カタカナひらがな) | かな入力をオン |
+| 無変換 / 英数 | かな入力をオフ(入力中の文字は確定) |
+| スペース / 変換 | 変換、次候補 |
+| Enter | 確定 |
+| Backspace / Delete / ← → | 入力中の文字の編集・文節移動(`Shift`+← → で文節の伸縮) |
+| ↑ ↓ | 候補の移動 |
+| Esc | 変換の取り消し |
+| F6 〜 F10 | ひらがな・カタカナ・半角カタカナ・全角英数・半角英数に一括変換 |
+| Ctrl / Alt との組み合わせ | そのままアプリに渡します |
+
+一部の Bluetooth キーボードは、半角/全角を `KEY_GRAVE`(scan 41)として送ります。
+KanaKana はキーのスキャンコードで判別するので、US 配列として認識されているキーボードでも動作します。
+
+## ビルド
+
+```
+# JDK 17 以上と Android SDK が必要です
+./gradlew :app:assembleDebug
+```
+
+Mozc のネイティブライブラリ(`libmozc.so`、`mozc.data`)は Git に含まれません。
+Linux/WSL2 で `scripts/build_mozc.sh` を実行するか、上流の Release の APK から取り出して
+`mozc/src/main/jniLibs/<abi>/libmozc.so` と `mozc/src/main/assets/mozc.data` に置いてください。
+日本語を含むパスではビルドできません(AGP と protoc の制限)。`C:\dev\Kanakana` のような英数字のパスで作業してください。
+
+- パッケージ名は `jp.kanakana.ime`(debug は `.debug`)です。Komorebi と同じ端末に共存できます。
+- アップデート確認は、このリポジトリの Release を見ます。
+- ライセンスは Apache License 2.0 です。Komorebi IME と Zinna-IME の著作権表示は `NOTICE` と
+  アプリ内の「ライセンス」に記載しています。
+
+KanaKana への問い合わせ・不具合報告は [GitHub Issues](https://github.com/onboard-dev/Kanakana/issues) へお願いします。
+以下の上流 README にある配布先・ドキュメント・連絡先は、すべて Komorebi IME のものです。
+
+---
+
 # Komorebi IME
 
 [![技術者倫理|遵守済み](https://gijutsusharin.li/badge.svg)](https://gijutsusharin.li)
