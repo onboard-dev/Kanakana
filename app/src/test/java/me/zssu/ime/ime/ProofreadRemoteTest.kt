@@ -12,8 +12,8 @@ import org.junit.Test
 class ProofreadRemoteTest {
     private fun base(url: String) = ProofreadRemote.checkOllamaUrl(url).base
 
-    @Test fun acceptsTheUsersTailscaleAddress() {
-        assertEquals("http://100.104.135.64:11434", base("http://100.104.135.64:11434"))
+    @Test fun acceptsATailscaleAddress() {
+        assertEquals("http://100.64.0.10:11434", base("http://100.64.0.10:11434"))
     }
 
     @Test fun fillsInSchemeAndDefaultPort() {
@@ -119,6 +119,6 @@ class ProofreadRemoteTest {
         assertTrue(cfg(ProofreadEngine.OPENROUTER, key = "k", rm = "m").ready())
         assertFalse(cfg(ProofreadEngine.OLLAMA, url = "http://192.168.0.1", om = "").ready())
         assertFalse(cfg(ProofreadEngine.OLLAMA, url = "http://example.com", om = "m").ready())
-        assertTrue(cfg(ProofreadEngine.OLLAMA, url = "100.104.135.64:11434", om = "qwen3:8b").ready())
+        assertTrue(cfg(ProofreadEngine.OLLAMA, url = "100.64.0.10:11434", om = "qwen3:8b").ready())
     }
 }
