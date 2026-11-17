@@ -423,6 +423,7 @@ class ZinnaImeService : InputMethodService() {
              } }
             onToolAction = ::handleToolAction
             onSnippetSelected = { text -> enqueueInput {
+                Log.i(TAG, "snippet selected len=${text.length} restricted=${restrictedTextToolField()} composing=$isComposing")
                 if (!restrictedTextToolField()) {
                     if ("{{名前}}" in text) startTextTool(TextTool.SNIPPET_NAME, text)
                     else pasteSnippet(text)
@@ -828,14 +829,16 @@ class ZinnaImeService : InputMethodService() {
     private suspend fun pasteSnippet(template: String, nameOverride: String? = null) {
         synchronizeEditorComposition()
         if (isComposing) submitCurrentComposition()
-        if (isComposing) return
-        val ic = currentInputConnection ?: return
+        if (isComposing) { Log.w(TAG, "snippet not pasted: still composing"); return }
+        val ic = currentInputConnection ?: run { Log.w(TAG, "snippet not pasted: no input connection"); return }
         SnippetStore(this).markUsed(template)
         val expanded = SnippetTemplate.expand(template, nameOverride ?: SnippetStore(this).name(), selectedText(ic).orEmpty(),
             SnippetTemplate.date(SnippetStore(this).dateFormat()))
-        if (expanded.text.isEmpty()) return
+        if (expanded.text.isEmpty()) { Log.w(TAG, "snippet not pasted: expansion is empty"); return }
         val anchor = if (expanded.caret != expanded.text.length) voiceAnchor() else null
-        if (ic.commitText(expanded.text, 1) && anchor != null &&
+        val committed = ic.commitText(expanded.text, 1)
+        Log.i(TAG, "snippet commitText accepted=$committed len=${expanded.text.length}")
+        if (committed && anchor != null &&
             anchor.selectionStart in 0..anchor.text.length && anchor.selectionEnd in 0..anchor.text.length) {
             val start = anchor.startOffset + minOf(anchor.selectionStart, anchor.selectionEnd)
             val caret = start + expanded.caret

@@ -6,7 +6,12 @@ internal object SnippetTemplate {
     fun date(pattern: String): String = java.text.SimpleDateFormat(pattern, java.util.Locale.JAPAN).format(java.util.Date())
     fun validDateFormat(pattern: String): Boolean = pattern.length in 1..40 && runCatching { date(pattern) }.isSuccess
 
-    private val token = Regex("""\{\{(名前|日付|選択|カーソル)}}""")
+    /**
+     * Both closing braces are escaped on purpose. Android's regex engine (ICU) rejects a bare `}`
+     * that the JVM accepts, which made this class fail to load on devices and broke every snippet.
+     */
+    internal const val TOKEN_PATTERN = """\{\{(名前|日付|選択|カーソル)\}\}"""
+    private val token = Regex(TOKEN_PATTERN)
     fun expand(template: String, name: String, selection: String, date: String): Expansion {
         val output = StringBuilder()
         var from = 0
