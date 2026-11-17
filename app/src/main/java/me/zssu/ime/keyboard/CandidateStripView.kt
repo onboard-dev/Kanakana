@@ -61,6 +61,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
     var onSnippetSearch: (() -> Unit)? = null
     var onClipboardSearch: (() -> Unit)? = null
     var onManageSnippets: (() -> Unit)? = null
+    var onAllSnippets: (() -> Unit)? = null
     var onClipboardItemSelected: ((String) -> Unit)? = null
     var onClipboardItemChanged: ((String, Boolean) -> Unit)? = null
     var onClipboardHistoryCleared: (() -> Unit)? = null
@@ -711,6 +712,31 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         for (value in items) panel.addView(TextView(context).apply {
             text = value; maxLines = 2; applyTheme(this)
             setOnClickListener { onSnippetSelected?.invoke(value) }
+        })
+        val scroll = android.widget.ScrollView(context).apply { addView(panel) }
+        container.addView(scroll, LinearLayout.LayoutParams(width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels, dp(180)))
+    }
+
+    /** The few snippets used most recently, for one-tap insertion from a long press on the menu. */
+    fun showRecentSnippets(items: List<String>) {
+        paletteHeight(true)
+        container.removeAllViews()
+        setContainerFillWidth(false)
+        val panel = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        panel.addView(iconButton(R.drawable.ic_material_arrow_back, "閉じる") { showTools() })
+        panel.addView(TextView(context).apply {
+            text = "最近使った定型文"; applyTheme(this); setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        if (items.isEmpty()) panel.addView(TextView(context).apply {
+            text = "まだ使った定型文がありません"; applyTheme(this)
+        })
+        for (value in items) panel.addView(TextView(context).apply {
+            text = value; maxLines = 2; applyTheme(this)
+            setOnClickListener { onSnippetSelected?.invoke(value) }
+        })
+        panel.addView(TextView(context).apply {
+            text = "すべての定型文を見る"; applyTheme(this)
+            setOnClickListener { onAllSnippets?.invoke() }
         })
         val scroll = android.widget.ScrollView(context).apply { addView(panel) }
         container.addView(scroll, LinearLayout.LayoutParams(width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels, dp(180)))

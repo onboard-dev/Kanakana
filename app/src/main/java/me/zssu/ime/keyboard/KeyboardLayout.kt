@@ -121,7 +121,12 @@ sealed interface KeyAction {
 
     @Serializable
     @SerialName("delete_chunk")
-    data class DeleteChunk(val forward: Boolean = false, val toLineBoundary: Boolean = false) : KeyAction
+    /** [toStart]: delete everything before the caret, across lines, to the start of the field. */
+    data class DeleteChunk(
+        val forward: Boolean = false,
+        val toLineBoundary: Boolean = false,
+        val toStart: Boolean = false,
+    ) : KeyAction
 
     @Serializable
     @SerialName("enter")

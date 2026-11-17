@@ -431,6 +431,7 @@ class ZinnaImeService : InputMethodService() {
             } }
             onSnippetSearch = { enqueueInput { startTextTool(TextTool.SNIPPET_SEARCH) } }
             onClipboardSearch = { enqueueInput { startTextTool(TextTool.CLIP_SEARCH) } }
+            onAllSnippets = { candidateView?.showSnippets(SnippetStore(this@ZinnaImeService).entries()) }
             onManageSnippets = { startActivity(Intent(this@ZinnaImeService, me.zssu.ime.settings.SnippetActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)) }
             onStyleSelected = { style -> enqueueInput {
                 applyStyleCorrection(style)
@@ -510,6 +511,17 @@ class ZinnaImeService : InputMethodService() {
                     }
                 }
             }
+        }
+        // A long press jumps straight to the snippets used most recently.
+        menuButton.setOnLongClickListener {
+            if (voicePanelActive) closeVoicePanel()
+            if (restrictedTextToolField()) {
+                Toast.makeText(this@ZinnaImeService, "機密モードでは定型文を表示しません", Toast.LENGTH_SHORT).show()
+            } else {
+                it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                candidates.showRecentSnippets(SnippetStore(this@ZinnaImeService).recent())
+            }
+            true
         }
         toolMenuButton = menuButton
         val menuButtonWidth = (44 * resources.displayMetrics.density).toInt()
@@ -818,6 +830,7 @@ class ZinnaImeService : InputMethodService() {
         if (isComposing) submitCurrentComposition()
         if (isComposing) return
         val ic = currentInputConnection ?: return
+        SnippetStore(this).markUsed(template)
         val expanded = SnippetTemplate.expand(template, nameOverride ?: SnippetStore(this).name(), selectedText(ic).orEmpty(),
             SnippetTemplate.date(SnippetStore(this).dateFormat()))
         if (expanded.text.isEmpty()) return
@@ -2102,6 +2115,10 @@ class ZinnaImeService : InputMethodService() {
             render(state)
             return
         }
+        if (action.toStart) {
+            deleteEverythingBeforeCaret(ic)
+            return
+        }
         // A selection is one explicit deletion target; never also remove adjacent words.
         val maximum = 8192
         val text = runCatching {
@@ -2126,6 +2143,32 @@ class ZinnaImeService : InputMethodService() {
                 }
             } finally { ic.endBatchEdit() }
         }.onFailure { Log.w(TAG, "Editor did not accept deletion gesture", it) }
+    }
+
+    /**
+     * Deletes all text before the caret, however long, in editor-sized batches.
+     *
+     * A composition is committed first: its pending reading is part of what lies before the caret,
+     * and leaving it in Mozc would let it reappear after the editor text is gone.
+     */
+    private suspend fun deleteEverythingBeforeCaret(ic: android.view.inputmethod.InputConnection) {
+        if (fieldPolicy.rawKeyEvents) return
+        if (isComposing) submitCurrentComposition()
+        val batch = 8192
+        // Bounded so a misbehaving editor that never shrinks cannot spin this loop forever.
+        repeat(256) {
+            val before = runCatching { ic.getTextBeforeCursor(batch, 0)?.toString() }.getOrNull()
+            if (before.isNullOrEmpty()) return
+            runCatching {
+                ic.beginBatchEdit()
+                try {
+                    if (!ic.deleteSurroundingTextInCodePoints(before.codePointCount(0, before.length), 0)) {
+                        ic.deleteSurroundingText(before.length, 0)
+                    }
+                } finally { ic.endBatchEdit() }
+            }.onFailure { Log.w(TAG, "Editor did not accept delete-to-start", it); return }
+            if (before.length < batch) return
+        }
     }
 
     private fun sendRawKeyPress(

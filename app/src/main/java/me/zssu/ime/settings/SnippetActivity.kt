@@ -5,8 +5,13 @@ import android.app.AlertDialog
 import android.os.Bundle
 import android.widget.*
 import me.zssu.ime.ime.SnippetStore
+import me.zssu.ime.ime.SnippetTransfer
 
 class SnippetActivity : Activity() {
+    private companion object {
+        const val REQUEST_IMPORT = 4101
+        const val REQUEST_EXPORT = 4102
+    }
     private val store by lazy { SnippetStore(this) }
     override fun onCreate(savedInstanceState: Bundle?) { super.onCreate(savedInstanceState); refresh() }
     private fun refresh() {
@@ -16,6 +21,8 @@ class SnippetActivity : Activity() {
             setPadding(24, 24, 24, 24)
             addView(TextView(context).apply { text = "定型文\nタップで編集、長押しで並べ替え・削除。端末内に暗号化して保存します。"; textSize = 18f })
             addView(Button(context).apply { text = "追加"; isEnabled = items.size < 100; setOnClickListener { edit(null) } })
+            addView(Button(context).apply { text = "テキストファイルからインポート"; setOnClickListener { pickImport() } })
+            addView(Button(context).apply { text = "テキストファイルへエクスポート"; setOnClickListener { pickExport() } })
             addView(Button(context).apply {
                 text = "差し込み用の名前を設定"
                 setOnClickListener {
@@ -116,6 +123,81 @@ class SnippetActivity : Activity() {
         }
         dialog.show()
     }
+    // The system file picker is the choice between this device and Google Drive: Drive appears as a
+    // location in it when the Drive app is installed and signed in.
+    private fun pickImport() {
+        val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
+            addCategory(android.content.Intent.CATEGORY_OPENABLE)
+            type = "text/*"
+        }
+        launchPicker(intent, REQUEST_IMPORT)
+    }
+
+    private fun pickExport() {
+        if (store.entries().isEmpty()) { Toast.makeText(this, "エクスポートする定型文がありません", Toast.LENGTH_SHORT).show(); return }
+        val intent = android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
+            addCategory(android.content.Intent.CATEGORY_OPENABLE)
+            type = "text/plain"
+            putExtra(android.content.Intent.EXTRA_TITLE, "KanaKana-定型文.txt")
+        }
+        launchPicker(intent, REQUEST_EXPORT)
+    }
+
+    private fun launchPicker(intent: android.content.Intent, request: Int) {
+        runCatching { startActivityForResult(intent, request) }
+            .onFailure { Toast.makeText(this, "ファイルを選ぶ画面を開けませんでした", Toast.LENGTH_LONG).show() }
+    }
+
+    @Deprecated("Plain Activity; the result API of ComponentActivity is not available here")
+    override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
+        super.onActivityResult(requestCode, resultCode, data)
+        val uri = data?.data
+        if (resultCode != RESULT_OK || uri == null) return
+        when (requestCode) {
+            REQUEST_IMPORT -> importFrom(uri)
+            REQUEST_EXPORT -> exportTo(uri)
+        }
+    }
+
+    private fun importFrom(uri: android.net.Uri) {
+        val text = runCatching {
+            contentResolver.openInputStream(uri)?.use { input ->
+                val out = java.io.ByteArrayOutputStream()
+                val buffer = ByteArray(16 * 1024)
+                while (true) {
+                    val n = input.read(buffer)
+                    if (n < 0) break
+                    out.write(buffer, 0, n)
+                    check(out.size() <= SnippetTransfer.MAX_FILE_BYTES) { "file too large" }
+                }
+                String(out.toByteArray(), Charsets.UTF_8)
+            }
+        }.getOrNull()
+        if (text == null) { Toast.makeText(this, "ファイルを読み込めませんでした(2MBまでのテキストファイルです)", Toast.LENGTH_LONG).show(); return }
+        val lines = SnippetTransfer.decode(text)
+        if (lines.isEmpty()) { Toast.makeText(this, "取り込める行がありませんでした", Toast.LENGTH_LONG).show(); return }
+        val merge = SnippetTransfer.merge(store.entries(), lines)
+        if (merge.added > 0 && !store.save(merge.merged)) {
+            Toast.makeText(this, "保存できませんでした", Toast.LENGTH_LONG).show(); return
+        }
+        val message = buildString {
+            append("${merge.added}件を追加しました")
+            if (merge.duplicates > 0) append("\n重複のため${merge.duplicates}件はスキップしました")
+            if (merge.overLimit > 0) append("\n上限(${SnippetTransfer.MAX_ENTRIES}件)を超えた${merge.overLimit}件は追加できませんでした")
+        }
+        AlertDialog.Builder(this).setTitle("インポート結果").setMessage(message)
+            .setPositiveButton("閉じる", null).show()
+        refresh()
+    }
+
+    private fun exportTo(uri: android.net.Uri) {
+        val entries = store.entries()
+        val ok = runCatching {
+            contentResolver.openOutputStream(uri, "wt")?.use { it.write(SnippetTransfer.encode(entries).toByteArray(Charsets.UTF_8)) } != null
+        }.getOrDefault(false)
+        Toast.makeText(this, if (ok) "${entries.size}件をエクスポートしました" else "書き出せませんでした", Toast.LENGTH_LONG).show()
+    }
+
     private fun persist(items: List<String>): Boolean {
         if (!store.save(items)) { Toast.makeText(this, "保存できませんでした", Toast.LENGTH_LONG).show(); return false }
         refresh(); return true

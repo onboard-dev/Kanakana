@@ -817,6 +817,9 @@ class FlickKeyboardView @JvmOverloads constructor(
     private fun touchOutput(touch: Touch): KeyOutput? {
         if (!touch.deleteGesture || touch.direction == FlickDirection.CENTER) return touch.key.spec.output(touch.direction)
         val forward = touch.direction == FlickDirection.UP
+        // Flicking left clears everything before the caret, as ATOK does. Flicking up still deletes
+        // the word (or, dragged further, the rest of the line) after it.
+        if (!forward) return KeyOutput("先頭まですべて削除", KeyAction.DeleteChunk(forward = false, toStart = true))
         val label = if (touch.deleteLine) { if (forward) "行末まで" else "行頭まで" }
             else if (forward) "右の単語" else "左の単語"
         return KeyOutput(label, KeyAction.DeleteChunk(forward, touch.deleteLine))
