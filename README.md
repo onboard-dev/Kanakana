@@ -6,6 +6,10 @@ Komorebi の機能(フリック・QWERTY、Mozc 変換、Karukan、ユーザー�
 
 ![KanaKana 日本語入力アプリ 機能紹介](docs/branding/KanaKana日本語入力アプリ機能紹介.png)
 
+## 最新版
+
+[GitHub Releases の最新版(v1.0.0)](https://github.com/onboard-dev/Kanakana/releases/latest) から APK を入手できます。debug 署名のテスト用で、アプリ ID は `jp.kanakana.ime.debug` です。
+
 ## 動作確認した環境
 
 | 項目 | 内容 |
