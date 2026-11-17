@@ -97,7 +97,7 @@ class ZinnaImeService : InputMethodService() {
     private var zenzaiState: MozcSession.State? = null
     private val enginePreferences by lazy { getSharedPreferences(ImeSettings.NAME, Context.MODE_PRIVATE) }
     private val enginePreferenceListener = android.content.SharedPreferences.OnSharedPreferenceChangeListener { _, key ->
-        if (key == "zenzai_plus_enabled" || key == "zenzai_mozc_enabled") { enqueueInput {
+        if (key == "zenzai_plus_enabled" || key == "zenzai_mozc_enabled" || key == "conversion_engine") { enqueueInput {
             submitCurrentComposition()
             refreshZenzaiNow()
             layout?.let { session.applyInputStyle(it.inputStyle) }
@@ -2769,7 +2769,8 @@ class ZinnaImeService : InputMethodService() {
 
     private fun refreshZenzaiNow() {
         val policy = InputFieldPolicy.from(currentInputEditorInfo)
-        val enabled = settings.zenzaiPlusEnabled && activeProfile?.neuralEnabled != false && ZenzaiEngine.isBundled(this) && !policy.incognito
+        val enabled = settings.zenzaiPlusEnabled && settings.conversionEngine == ImeSettings.ConversionEngine.AUTO &&
+            activeProfile?.neuralEnabled != false && ZenzaiEngine.isBundled(this) && !policy.incognito
         zenzai.cancel()
         zenzaiCandidate = null
         zenzaiState = null
@@ -2843,8 +2844,7 @@ class ZinnaImeService : InputMethodService() {
         }
         publish()
         if (prompt == null) { fallback(); return }
-        if (settings.conversionEngine == ImeSettings.ConversionEngine.KARUKAN) fallback()
-        else if (settings.conversionEngine == ImeSettings.ConversionEngine.AUTO) {
+        if (settings.conversionEngine == ImeSettings.ConversionEngine.AUTO) {
             val timeout = Runnable { if (zenzaiState === state && neural == null) fallback() }
             zenzaiFallbackPending = timeout
             mainHandler.postDelayed(timeout, 1500)
@@ -2911,6 +2911,7 @@ class ZinnaImeService : InputMethodService() {
 
     private fun canUseKarukan(aiCandidateAvailable: Boolean): Boolean = KarukanFallbackPolicy.shouldUse(
         mode = settings.conversionEngine,
+        karukanEnabled = settings.karukanEnabled,
         ready = KarukanModelStore.files(this).ready && karukanEngine.isNativeAvailable,
         permitted = activeProfile?.neuralEnabled != false && layout?.inputStyle?.fullWidthSpace == true && !fieldPolicy.incognito &&
             (currentInputEditorInfo?.imeOptions ?: 0) and EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING == 0,

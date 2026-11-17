@@ -27,7 +27,22 @@ class ImeSettings(context: Context) {
 
     enum class OneHandMode { OFF, LEFT, RIGHT }
     enum class FlickInputMode { FLICK_ONLY, FLICK_AND_TOGGLE }
-    enum class ConversionEngine { AUTO, MOZC, KARUKAN }
+    /**
+     * AUTO adds the on-device AI converters (zenzai-plus, Karukan) to Mozc; which of them run is
+     * chosen by [zenzaiPlusEnabled] and [karukanEnabled]. MOZC uses neither. An older stored
+     * "KARUKAN" value is read as AUTO.
+     */
+    enum class ConversionEngine { AUTO, MOZC }
+    /**
+     * Whether Karukan may supply candidates (under [ConversionEngine.AUTO] only).
+     *
+     * Before this switch existed, Karukan was used whenever its model was installed and the engine
+     * was not Mozc-only, so an unset value keeps that behaviour.
+     */
+    var karukanEnabled: Boolean
+        get() = if (prefs.contains(KEY_KARUKAN_ENABLED)) prefs.getBoolean(KEY_KARUKAN_ENABLED, true)
+            else prefs.getString(KEY_CONVERSION_ENGINE, null) != ConversionEngine.MOZC.name
+        set(value) { prefs.edit().putBoolean(KEY_KARUKAN_ENABLED, value).apply(); bumpRevision() }
     /** Handle a physical JIS keyboard as kana input (and keep the candidate bar on screen for it). */
     var hardwareKanaEnabled: Boolean
         get() = prefs.getBoolean("hardware_kana_enabled", true)
@@ -452,6 +467,7 @@ class ImeSettings(context: Context) {
         private const val KEY_USE_PRONOUN_DICT = "use_pronoun_dict"
         private const val KEY_USE_AI_TECH_DICT = "use_ai_tech_dict"
         private const val KEY_CONVERSION_ENGINE = "conversion_engine"
+        private const val KEY_KARUKAN_ENABLED = "karukan_enabled"
         const val DEFAULT_THEME_ID = "material_you"
         const val DEFAULT_BACKGROUND_OPACITY = 0.45f
         const val MIN_KEY_HEIGHT_SCALE = 0.7f

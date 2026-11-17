@@ -15,7 +15,7 @@ internal object InputPerformance {
             val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
             appendLine("アプリ版: $version / 機種: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
             appendLine("入力処理エラー: ${prefs.getLong("error_count", 0)} 回")
-            appendLine("有効な変換設定: ${settings.conversionEngine}")
+            appendLine("有効な変換設定: ${settings.conversionEngine} / zenzai-plus 優先: ${if (settings.zenzaiPlusEnabled) "オン" else "オフ"} / Karukan: ${if (settings.karukanEnabled) "オン" else "オフ"}")
             appendLine("Karukan モデル: ${if (me.zssu.ime.karukan.KarukanModelStore.files(context).ready) "取得済み" else "未取得"}")
             appendLine("zenzai-plus: ${if (ZenzaiEngine.isBundled(context)) "利用可能" else "未搭載"}")
             val proofreading = ProofreadModelStore.state(context, ProofreadModelStore.selected(context))

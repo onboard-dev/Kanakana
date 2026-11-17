@@ -34,9 +34,9 @@ internal fun ZenzaiControls() {
     val available = remember(plusState) { ZenzaiEngine.isBundled(context) }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("zenzai-plus(文脈を読むAI変換と自動学習)", style = MaterialTheme.typography.titleMedium)
+            Text("zenzai-plus(約183MB・大きいAI)", style = MaterialTheme.typography.titleMedium)
             Text(
-                "前後の文脈を読んで、いちばん自然な変換を先頭に出す、大きめのAI(約183MB)です。Mozc だけのときより、候補が出るまで少し時間がかかることがあります(端末の性能によります)。端末の中だけで動き、入力は外に送りません。",
+                "読みから文全体の変換を考えて、先頭の候補にします。確定した言葉を覚える「自動学習(TTT)」があり、使うほど自分の言葉づかいに合っていきます。Karukan より優先して使われます。端末の中だけで動き、入力は外に送りません。",
                 style = MaterialTheme.typography.bodySmall,
             )
             when (val current = plusState) {
@@ -65,10 +65,12 @@ internal fun ZenzaiControls() {
 
             val modelReady = plusState is ZenzPlusModel.State.Ready
             val canEnable = available && modelReady
-            Text("zenzai-plus 変換を使用")
-            Switch(checked = enabled && canEnable, enabled = canEnable, onCheckedChange = {
-                enabled = it; settings.zenzaiPlusEnabled = it
-            })
+            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("AI変換にzenzai-plusを優先的に使用する", modifier = Modifier.weight(1f))
+                Switch(checked = enabled && canEnable, enabled = canEnable, onCheckedChange = {
+                    enabled = it; settings.zenzaiPlusEnabled = it
+                })
+            }
             if (!canEnable) {
                 // Say why the switch is dead instead of leaving it silently unresponsive.
                 Text(

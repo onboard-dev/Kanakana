@@ -46,6 +46,7 @@ internal fun SystemDictionaryControls() {
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("追加システム辞書", style = MaterialTheme.typography.titleMedium)
+            Text("標準の辞書にない言葉(新語、地名、英単語、郵便番号など)を増やす、任意のダウンロードです。必要ない人が多く、初期値の「標準辞書」で足ります。増やすほど候補が増え、使わない候補が混ざることがあります。変換の速さへの影響は、まだ測っていません。", style = MaterialTheme.typography.bodyMedium)
             Text("追加語も文中の変換に使う、Mozcデータ全体の切り替えです。複数選べます。実際に使うのは、選んだ辞書をすべて含む「統合データセット」です（単体より大きい場合があります）。", style = MaterialTheme.typography.bodyMedium)
             Text("入力中は切り替えを待ちます。個人辞書・学習履歴は引き継ぎます。", style = MaterialTheme.typography.bodySmall)
             Text(state.message.ifEmpty { "標準辞書を使用します" }, style = MaterialTheme.typography.bodyMedium)
@@ -68,6 +69,7 @@ internal fun SystemDictionaryControls() {
                     )
                     Column {
                         Text(pack.name, style = MaterialTheme.typography.bodyMedium)
+                        packSummary(pack.id)?.let { Text(it, style = MaterialTheme.typography.bodySmall) }
                         Text("${pack.version} · ${pack.license}", style = MaterialTheme.typography.bodySmall)
                     }
                 }
@@ -131,4 +133,15 @@ private fun status(
     state.applied == pack.id -> "標準辞書への切り替え待ち"
     manager.installed(pack) -> "導入済み"
     else -> "未導入"
+}
+
+/** What a dictionary adds, in words a user can act on. Shown under each checkbox. */
+private fun packSummary(id: String): String? = when (id) {
+    "neologd-main" -> "新しい言葉と固有名詞(ネットの新語、人名、地名、企業名など)"
+    "neologd-variants" -> "同じ言葉の別の書き方(表記ゆれ)と活用した形"
+    "skk-gpl" -> "総合辞書。一般の言葉、人名、地名、専門用語"
+    "skk-cc" -> "英和辞書。ひらがなの読みから英単語を出す"
+    "skk-unicode" -> "絵文字と異体字(旧字・俗字などの別の字形)"
+    "skk-permissive" -> "沖縄の言葉(地名・人名・食べ物など)、全国の郵便番号と事業所の郵便番号、異体字、公共の用語。沖縄の郵便番号だけではありません"
+    else -> null
 }
