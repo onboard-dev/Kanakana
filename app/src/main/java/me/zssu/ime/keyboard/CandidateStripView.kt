@@ -529,7 +529,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         ToolAction.CLIPBOARD -> R.drawable.ic_material_content_paste
         ToolAction.EMOJI -> R.drawable.ic_material_face
         ToolAction.ONE_HAND_CYCLE -> R.drawable.ic_material_settings
-        ToolAction.SNIPPETS -> R.drawable.ic_material_content_paste
+        ToolAction.SNIPPETS -> R.drawable.ic_material_notes
         ToolAction.HEIGHT -> R.drawable.ic_ime_height
         ToolAction.SETTINGS -> R.drawable.ic_material_settings
         ToolAction.MEETS_BEAM -> R.drawable.ic_meets_beam
@@ -540,7 +540,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         ToolAction.VOICE -> R.drawable.ic_voice
         ToolAction.TRANSLATE -> R.drawable.ic_ai_style
         ToolAction.HANDWRITING -> R.drawable.ic_ime_cursor_right
-        ToolAction.IMAGE_TEXT -> R.drawable.ic_material_content_paste
+        ToolAction.IMAGE_TEXT -> R.drawable.ic_material_image
     }
     fun showTools() {
         if (voicePanelShowing) return
