@@ -26,11 +26,28 @@ Komorebi の機能(フリック・QWERTY、Mozc 変換、Karukan、ユーザー�
 | Backspace / Delete / ← → | 入力中の文字の編集・文節移動(`Shift`+← → で文節の伸縮) |
 | ↑ ↓ | 候補の移動 |
 | Esc | 変換の取り消し |
-| F6 〜 F10 | ひらがな・カタカナ・半角カタカナ・全角英数・半角英数に一括変換 |
+| F6 / F7 / F8 | 入力中の文字を、ひらがな / 全角カタカナ / 半角カタカナに一括変換 |
+| F9 / F10 | アプリにそのまま渡します(かな入力では打鍵の英字に変換されて意味がないため) |
 | Ctrl / Alt との組み合わせ | そのままアプリに渡します |
 
 一部の Bluetooth キーボードは、半角/全角を `KEY_GRAVE`(scan 41)として送ります。
 KanaKana はキーのスキャンコードで判別するので、US 配列として認識されているキーボードでも動作します。
+
+## Komorebi IME からの変更点
+
+KanaKana は Komorebi IME(rc.68-dev)をもとに、次の点を変更しています。これ以外は上流と同じ動作です。
+仕様を変更したら、この一覧を更新します。
+
+| 区分 | 変更内容 |
+|---|---|
+| 名称 | アプリ名・IME 名・設定画面の表記を「KanaKana」に変更。`applicationId` は `jp.kanakana.ime`(Komorebi と共存可能)。ソースの package 名 `me.zssu.ime` は上流との差分を小さくするため据え置き |
+| 更新確認 | 確認先を `zenskypj/Komorebi-IME` から `onboard-dev/Kanakana` の Release に変更(Komorebi の APK に置き換わるのを防ぐため) |
+| About 画面 | 「Komorebi IME のフォーク」と明記し、上流の問い合わせ先メールを削除。ライセンス表示(Komorebi / Zinna-IME)は維持 |
+| 入力 | 物理 JIS キーボードのかな入力を追加(`HardwareKana.kt`、`HARDWARE_KANA` 入力スタイル、Mozc の `preedit_method=KANA`) |
+| 表示 | 物理キーボード接続中は画面のキーを隠して候補バーのみ表示。右端の `⌨` で切替。接続/切断を監視して自動で切替 |
+| 設定 | 設定 → 入力方式に「ハードウェアキーボード(JISかな入力)」を追加 |
+| 未対応 | 音声入力(別アプリ `me.zssu.ime.voice`)との連携は、パッケージ名が異なるため動作しません |
+| ネイティブ | `libmozc.so`・`mozc.data` は上流 rc.68-dev のビルド済みを流用(Git には含めない) |
 
 ## ビルド
 

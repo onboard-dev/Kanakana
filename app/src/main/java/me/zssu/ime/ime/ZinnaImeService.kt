@@ -1834,9 +1834,7 @@ class ZinnaImeService : InputMethodService() {
                 val key = when (command.number) {
                     6 -> KeyEvent.SpecialKey.F6
                     7 -> KeyEvent.SpecialKey.F7
-                    8 -> KeyEvent.SpecialKey.F8
-                    9 -> KeyEvent.SpecialKey.F9
-                    else -> KeyEvent.SpecialKey.F10
+                    else -> KeyEvent.SpecialKey.F8
                 }
                 render(session.sendSpecialKey(key))
             }

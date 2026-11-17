@@ -83,7 +83,10 @@ class HardwareKanaTest {
     @Test fun functionKeysConvertOnlyWhileComposing() {
         assertEquals(Command.Function(7), classify(KeyEvent.KEYCODE_F7, composing = true))
         assertEquals(Command.Function(6), classify(KeyEvent.KEYCODE_F6, composing = true))
-        assertEquals(Command.Function(10), classify(KeyEvent.KEYCODE_F10, composing = true))
+        assertEquals(Command.Function(8), classify(KeyEvent.KEYCODE_F8, composing = true))
+        // F9/F10 would convert the key legends (か -> "t"), so the editor gets them untouched.
+        assertEquals(Command.Pass, classify(KeyEvent.KEYCODE_F9, composing = true))
+        assertEquals(Command.Pass, classify(KeyEvent.KEYCODE_F10, composing = true))
         assertEquals(Command.Pass, classify(KeyEvent.KEYCODE_F7, composing = false))
         assertEquals(Command.Pass, classify(KeyEvent.KEYCODE_F5, composing = true))
     }

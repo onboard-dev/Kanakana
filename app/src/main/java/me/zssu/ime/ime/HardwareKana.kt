@@ -30,7 +30,11 @@ internal object HardwareKana {
         data object Down : Command
         data object Escape : Command
 
-        /** F6-F10: Mozc's one-key conversion to hiragana, katakana, half-width and full-width latin. */
+        /**
+         * F6-F8: Mozc's one-key conversion to hiragana, full-width katakana and half-width katakana.
+         * F9/F10 (latin) are deliberately left to the editor: with kana input Mozc would convert the
+         * US key legends (か -> "t"), which is never what the user wants.
+         */
         data class Function(val number: Int) : Command
 
         /** 半角/全角: flip between kana and direct input. */
@@ -118,7 +122,7 @@ internal object HardwareKana {
             KeyEvent.KEYCODE_DPAD_UP -> Command.Up
             KeyEvent.KEYCODE_DPAD_DOWN -> Command.Down
             KeyEvent.KEYCODE_ESCAPE -> Command.Escape
-            in KeyEvent.KEYCODE_F6..KeyEvent.KEYCODE_F10 -> Command.Function(keyCode - KeyEvent.KEYCODE_F1 + 1)
+            in KeyEvent.KEYCODE_F6..KeyEvent.KEYCODE_F8 -> Command.Function(keyCode - KeyEvent.KEYCODE_F1 + 1)
             else -> Command.Pass
         }
     }
