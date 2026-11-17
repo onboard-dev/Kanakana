@@ -1,0 +1,19 @@
+{
+  "id": "solid_darkslategray",
+  "label": "単色 ダークスレートグレー",
+  "backgroundColor": "#FF2F4F4F",
+  "keyColor": "#FF4C6868",
+  "keyPressedColor": "#FF698080",
+  "modifierKeyColor": "#FF274141",
+  "labelColor": "#FFF5F5F5",
+  "flickGuideColor": "#FF5D7676",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FF2F4F4F",
+  "candidateTextColor": "#FFF5F5F5",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

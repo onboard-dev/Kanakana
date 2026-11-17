@@ -1,0 +1,19 @@
+{
+  "id": "solid_black",
+  "label": "単色 ブラック",
+  "backgroundColor": "#FF000000",
+  "keyColor": "#FF242424",
+  "keyPressedColor": "#FF474747",
+  "modifierKeyColor": "#FF000000",
+  "labelColor": "#FFF5F5F5",
+  "flickGuideColor": "#FF383838",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FF000000",
+  "candidateTextColor": "#FFF5F5F5",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

@@ -114,6 +114,19 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
     private var currentEmojiPage = EmojiPage.RECENT
     private var currentEmojiGroup: String? = null
     private var normalHeight = 0
+
+    /**
+     * Height of the key area the panels replace, as last measured by the service. Tool, edit and
+     * voice panels cover the candidate strip and the keyboard, so they use the same total height as
+     * the normal keyboard instead of a fixed size that looks cramped next to it.
+     */
+    var keyboardHeightPx = 0
+
+    private fun toolPanelHeight(): Int {
+        if (keyboardHeightPx <= 0) return dp(180)
+        val strip = if (normalHeight > 0) normalHeight else height
+        return strip + keyboardHeightPx
+    }
     private var emojiPanel: View? = null
 
     /**
@@ -566,7 +579,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
                        onApply: () -> Unit, onRetry: () -> Unit, onClose: () -> Unit) {
         if (!voicePanelShowing) paletteHeight(true)
         voicePanelShowing = true
-        layoutParams = layoutParams.apply { height = dp(180) }
+        layoutParams = layoutParams.apply { height = toolPanelHeight() }
         setContainerFillWidth(false)
         setContainerFillWidth(true)
         container.removeAllViews()
@@ -609,7 +622,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
     fun dismissVoicePanel() { voicePanelShowing = false; showTools() }
     private fun showToolMenu(editing: Boolean = false) {
         paletteHeight(true)
-        layoutParams = layoutParams.apply { height = dp(180) }
+        layoutParams = layoutParams.apply { height = toolPanelHeight() }
         container.removeAllViews()
         setContainerFillWidth(false)
         toolMenuShowing = true
@@ -744,7 +757,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
 
     fun showEditPanel() {
         paletteHeight(true)
-        layoutParams = layoutParams.apply { height = dp(180) }
+        layoutParams = layoutParams.apply { height = toolPanelHeight() }
         container.removeAllViews()
         setContainerFillWidth(false)
         val panel = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }

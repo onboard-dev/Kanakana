@@ -64,6 +64,8 @@ class ProofreadActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     @Volatile private var cancelled = false
     @Volatile private var busy = false
+    private val remoteSettings by lazy { ProofreadRemoteSettings(this) }
+    @Volatile private var remoteCall: ProofreadRemote.Call? = null
     private var style = ProofreadPrompt.Style.FIX
     private var output: String? = null
     private var outputHighlight: ProofreadDiff.Result? = null
@@ -152,7 +154,9 @@ class ProofreadActivity : Activity() {
 
     private fun buildPanel(panel: LinearLayout) {
         panel.addView(label("AI 文章校正", 22f))
-        panel.addView(label("文章は端末内で処理します。", 12f, dim = true))
+        panel.addView(label(
+            if (remoteSettings.engine == ProofreadEngine.LOCAL) "文章は端末内で処理します。"
+            else "文章は選んだ接続先(${remoteSettings.engine.label})に送信して処理します。", 12f, dim = true))
 
         panel.addView(label("校正する文章（編集できます）", 15f))
         textField = EditText(this).apply {
@@ -259,8 +263,14 @@ class ProofreadActivity : Activity() {
     private fun refresh() {
         if (!::actionRow.isInitialized) return
         val spec = selectedSpec()
-        val ready = modelReady()
-        modelStatus.text = if (ready) "モデル: ${spec.label}（取得済み）" else "モデル: ${spec.label}（未取得）"
+        val remote = remoteSettings.snapshot()
+        val usingRemote = remote.engine != ProofreadEngine.LOCAL
+        val ready = if (usingRemote) remote.ready() else modelReady()
+        modelStatus.text = when {
+            usingRemote -> "校正の接続先: ${remote.describe()}（文章を外部に送信します）"
+            ready -> "モデル: ${spec.label}（取得済み）"
+            else -> "モデル: ${spec.label}（未取得）"
+        }
 
         statusText.text = buildString {
             progress?.let { append(it) }
@@ -294,10 +304,12 @@ class ProofreadActivity : Activity() {
         }
 
         actionRow.removeAllViews()
-        actionRow.addView(button("校正する", primary = true, enabled = !busy && ready && ProofreadNative.available && text.isNotBlank() && withinLimit && instructionOk) {
+        actionRow.addView(button("校正する", primary = true, enabled = !busy && ready && (usingRemote || ProofreadNative.available) && text.isNotBlank() && withinLimit && instructionOk) {
             generate(spec)
         })
-        if (!ready) actionRow.addView(label("校正するには「モデルを管理」からモデルをダウンロードしてください。", 12f, dim = true))
+        if (!ready) actionRow.addView(label(
+            if (usingRemote) "接続先の設定が足りません。「校正の接続先」で入力してください。"
+            else "校正するには「モデルを管理」からモデルをダウンロードしてください。", 12f, dim = true))
         if (result != null) {
             actionRow.addView(button("適用", primary = true, enabled = !busy && !isStale()) {
                 ProofreadRequest.result = result
@@ -312,6 +324,7 @@ class ProofreadActivity : Activity() {
         if (busy) {
             actionRow.addView(button("中止", primary = false) {
                 cancelled = true
+                remoteCall?.cancel()
                 if (ProofreadNative.available) ProofreadNative.cancel()
                 progress = "中止しています…"
                 refresh()
@@ -319,6 +332,9 @@ class ProofreadActivity : Activity() {
         }
         actionRow.addView(button(if (ready) "モデルを管理" else "モデルをダウンロード", primary = false) {
             startActivity(Intent(this, ProofreadModelActivity::class.java))
+        })
+        actionRow.addView(button("校正の接続先", primary = false) {
+            startActivity(Intent(this, ProofreadRemoteActivity::class.java))
         })
     }
 
@@ -341,14 +357,21 @@ class ProofreadActivity : Activity() {
         if (snapshot.text.isBlank()) { error = "校正する文章を入力してください。"; refresh(); return }
         if (snapshot.text.length > ProofreadPrompt.MAX_TEXT) { error = "校正する文章は ${ProofreadPrompt.MAX_TEXT} 文字以内にしてください。"; refresh(); return }
         val modelFile = ProofreadModelStore.file(this, spec)
+        val remote = remoteSettings.snapshot()
+        val useRemote = remote.engine != ProofreadEngine.LOCAL
+        val call = ProofreadRemote.Call().also { remoteCall = it }
         busy = true; cancelled = false; error = null; output = null; outputHighlight = null; generatedFrom = null
-        progress = "端末内で校正中…"; refresh()
+        progress = if (useRemote) "${remote.engine.label} で校正中…" else "端末内で校正中…"; refresh()
         val prompt = ProofreadPrompt.prompt(snapshot.text, snapshot.style, snapshot.instruction, spec.format)
-        val ticket = if (ProofreadNative.available) ProofreadNative.cancel() else 0L
+        val ticket = if (!useRemote && ProofreadNative.available) ProofreadNative.cancel() else 0L
         Thread({
             android.os.Process.setThreadPriority(android.os.Process.THREAD_PRIORITY_BACKGROUND)
             try {
-                val raw = ProofreadNative.generate(modelFile.absolutePath, prompt.toByteArray(Charsets.UTF_8), ticket)?.toString(Charsets.UTF_8)
+                val raw = if (useRemote) {
+                    ProofreadRemote.proofread(remote, ProofreadPrompt.systemInstruction(snapshot.style, snapshot.instruction), snapshot.text, call)
+                } else {
+                    ProofreadNative.generate(modelFile.absolutePath, prompt.toByteArray(Charsets.UTF_8), ticket)?.toString(Charsets.UTF_8)
+                }
                 val extracted = ProofreadPrompt.extract(raw.orEmpty())
                 check(extracted.isNotBlank() && extracted.length <= 1800 && !extracted.contains('\uFFFD')) { "校正結果を取得できませんでした" }
                 check(!ProofreadPrompt.hasUnexpectedReasoningSwitch(snapshot.text, extracted)) {
@@ -370,6 +393,7 @@ class ProofreadActivity : Activity() {
 
     override fun onDestroy() {
         cancelled = true
+        remoteCall?.cancel()
         if (ProofreadNative.available) ProofreadNative.cancel()
         if (isFinishing && ProofreadRequest.result == null) ProofreadRequest.clear()
         super.onDestroy()

@@ -1,0 +1,19 @@
+{
+  "id": "solid_palegoldenrod",
+  "label": "単色 ペールゴールデンロッド",
+  "backgroundColor": "#FFEEE8AA",
+  "keyColor": "#FFF7F5D9",
+  "keyPressedColor": "#FFCAC590",
+  "modifierKeyColor": "#FFDBD59C",
+  "labelColor": "#FF1B1C1E",
+  "flickGuideColor": "#FF6B684C",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FFEEE8AA",
+  "candidateTextColor": "#FF1B1C1E",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

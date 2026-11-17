@@ -538,6 +538,8 @@ class ZinnaImeService : InputMethodService() {
         candidates.onPanelExpanded = { expanded ->
             if (expanded) confirmCommitsWholeSentence = false
             candidatePanelExpanded = expanded
+            // Measure before the keyboard is hidden: panels are sized to match it.
+            if (expanded && keyboard.visibility == View.VISIBLE && keyboard.height > 0) candidates.keyboardHeightPx = keyboard.height
             keyboard.visibility = if (expanded || compactForHardwareKeyboard()) View.GONE else View.VISIBLE
             menuButton.visibility = if (expanded) View.GONE else View.VISIBLE
             segmentBar?.visibility = if (!expanded && isConverting && segmentEditing) View.VISIBLE else View.GONE

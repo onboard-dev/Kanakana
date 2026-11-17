@@ -1,0 +1,19 @@
+{
+  "id": "solid_plum",
+  "label": "単色 プラム",
+  "backgroundColor": "#FFDDA0DD",
+  "keyColor": "#FFF0D4F0",
+  "keyPressedColor": "#FFBC88BC",
+  "modifierKeyColor": "#FFCB93CB",
+  "labelColor": "#FF1B1C1E",
+  "flickGuideColor": "#FF634863",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FFDDA0DD",
+  "candidateTextColor": "#FF1B1C1E",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

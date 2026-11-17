@@ -1,0 +1,19 @@
+{
+  "id": "solid_crimson",
+  "label": "単色 クリムゾン",
+  "backgroundColor": "#FFDC143C",
+  "keyColor": "#FFE13557",
+  "keyPressedColor": "#FFE65673",
+  "modifierKeyColor": "#FFB41031",
+  "labelColor": "#FFF5F5F5",
+  "flickGuideColor": "#FFE44867",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FFDC143C",
+  "candidateTextColor": "#FFF5F5F5",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

@@ -4,6 +4,7 @@ import android.app.Activity
 import android.app.AlertDialog
 import android.os.Bundle
 import android.widget.*
+import me.zssu.ime.ime.SnippetCrypto
 import me.zssu.ime.ime.SnippetStore
 import me.zssu.ime.ime.SnippetTransfer
 
@@ -21,8 +22,8 @@ class SnippetActivity : Activity() {
             setPadding(24, 24, 24, 24)
             addView(TextView(context).apply { text = "定型文\nタップで編集、長押しで並べ替え・削除。端末内に暗号化して保存します。"; textSize = 18f })
             addView(Button(context).apply { text = "追加"; isEnabled = items.size < 100; setOnClickListener { edit(null) } })
-            addView(Button(context).apply { text = "テキストファイルからインポート"; setOnClickListener { pickImport() } })
-            addView(Button(context).apply { text = "テキストファイルへエクスポート"; setOnClickListener { pickExport() } })
+            addView(Button(context).apply { text = "インポート"; setOnClickListener { pickImport() } })
+            addView(Button(context).apply { text = "エクスポート"; setOnClickListener { pickExport() } })
             addView(Button(context).apply {
                 text = "差し込み用の名前を設定"
                 setOnClickListener {
@@ -61,6 +62,8 @@ class SnippetActivity : Activity() {
             items.forEachIndexed { index, value ->
                 addView(Button(context).apply {
                     text = value
+                    // Buttons upper-case their label by default; a snippet must show as stored.
+                    isAllCaps = false
                     setOnClickListener { edit(index) }
                     setOnLongClickListener {
                         val actions = buildList {
@@ -125,22 +128,39 @@ class SnippetActivity : Activity() {
     }
     // The system file picker is the choice between this device and Google Drive: Drive appears as a
     // location in it when the Drive app is installed and signed in.
+    //
+    // Export always writes the password-protected container (see SnippetCrypto). Import accepts that
+    // container, and also a plain text file with one snippet per line.
+    private var pendingExport: ByteArray? = null
+
     private fun pickImport() {
         val intent = android.content.Intent(android.content.Intent.ACTION_OPEN_DOCUMENT).apply {
             addCategory(android.content.Intent.CATEGORY_OPENABLE)
-            type = "text/*"
+            // Not text/*: an encrypted file has no text type and would be greyed out in the picker.
+            type = "*/*"
         }
         launchPicker(intent, REQUEST_IMPORT)
     }
 
     private fun pickExport() {
-        if (store.entries().isEmpty()) { Toast.makeText(this, "エクスポートする定型文がありません", Toast.LENGTH_SHORT).show(); return }
-        val intent = android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
-            addCategory(android.content.Intent.CATEGORY_OPENABLE)
-            type = "text/plain"
-            putExtra(android.content.Intent.EXTRA_TITLE, "KanaKana-定型文.txt")
+        val entries = store.entries()
+        if (entries.isEmpty()) { Toast.makeText(this, "エクスポートする定型文がありません", Toast.LENGTH_SHORT).show(); return }
+        askNewPassword { password ->
+            runBusy("暗号化しています…", {
+                SnippetCrypto.encrypt(SnippetTransfer.encode(entries).toByteArray(Charsets.UTF_8), password)
+            }) { result ->
+                java.util.Arrays.fill(password, ' ')
+                result.onSuccess { bytes ->
+                    pendingExport = bytes
+                    val intent = android.content.Intent(android.content.Intent.ACTION_CREATE_DOCUMENT).apply {
+                        addCategory(android.content.Intent.CATEGORY_OPENABLE)
+                        type = "application/octet-stream"
+                        putExtra(android.content.Intent.EXTRA_TITLE, SnippetCrypto.FILE_NAME)
+                    }
+                    launchPicker(intent, REQUEST_EXPORT)
+                }.onFailure { Toast.makeText(this, "暗号化できませんでした", Toast.LENGTH_LONG).show() }
+            }
         }
-        launchPicker(intent, REQUEST_EXPORT)
     }
 
     private fun launchPicker(intent: android.content.Intent, request: Int) {
@@ -152,7 +172,10 @@ class SnippetActivity : Activity() {
     override fun onActivityResult(requestCode: Int, resultCode: Int, data: android.content.Intent?) {
         super.onActivityResult(requestCode, resultCode, data)
         val uri = data?.data
-        if (resultCode != RESULT_OK || uri == null) return
+        if (resultCode != RESULT_OK || uri == null) {
+            if (requestCode == REQUEST_EXPORT) pendingExport = null
+            return
+        }
         when (requestCode) {
             REQUEST_IMPORT -> importFrom(uri)
             REQUEST_EXPORT -> exportTo(uri)
@@ -160,7 +183,7 @@ class SnippetActivity : Activity() {
     }
 
     private fun importFrom(uri: android.net.Uri) {
-        val text = runCatching {
+        val bytes = runCatching {
             contentResolver.openInputStream(uri)?.use { input ->
                 val out = java.io.ByteArrayOutputStream()
                 val buffer = ByteArray(16 * 1024)
@@ -170,10 +193,26 @@ class SnippetActivity : Activity() {
                     out.write(buffer, 0, n)
                     check(out.size() <= SnippetTransfer.MAX_FILE_BYTES) { "file too large" }
                 }
-                String(out.toByteArray(), Charsets.UTF_8)
+                out.toByteArray()
             }
         }.getOrNull()
-        if (text == null) { Toast.makeText(this, "ファイルを読み込めませんでした(2MBまでのテキストファイルです)", Toast.LENGTH_LONG).show(); return }
+        if (bytes == null) { Toast.makeText(this, "ファイルを読み込めませんでした(2MBまでのファイルです)", Toast.LENGTH_LONG).show(); return }
+        if (SnippetCrypto.isEncrypted(bytes)) promptDecrypt(bytes, null)
+        else applyImport(String(bytes, Charsets.UTF_8))
+    }
+
+    private fun promptDecrypt(bytes: ByteArray, error: String?) {
+        askPassword("パスワードを入力", error) { password ->
+            runBusy("復号しています…", { SnippetCrypto.decrypt(bytes, password) }) { result ->
+                java.util.Arrays.fill(password, ' ')
+                val plain = result.getOrNull()
+                if (plain == null) promptDecrypt(bytes, "パスワードが違うか、ファイルが壊れています")
+                else applyImport(String(plain, Charsets.UTF_8))
+            }
+        }
+    }
+
+    private fun applyImport(text: String) {
         val lines = SnippetTransfer.decode(text)
         if (lines.isEmpty()) { Toast.makeText(this, "取り込める行がありませんでした", Toast.LENGTH_LONG).show(); return }
         val merge = SnippetTransfer.merge(store.entries(), lines)
@@ -191,11 +230,77 @@ class SnippetActivity : Activity() {
     }
 
     private fun exportTo(uri: android.net.Uri) {
-        val entries = store.entries()
+        val bytes = pendingExport
+        pendingExport = null
+        if (bytes == null) { Toast.makeText(this, "もう一度エクスポートを実行してください", Toast.LENGTH_LONG).show(); return }
         val ok = runCatching {
-            contentResolver.openOutputStream(uri, "wt")?.use { it.write(SnippetTransfer.encode(entries).toByteArray(Charsets.UTF_8)) } != null
+            contentResolver.openOutputStream(uri, "wt")?.use { it.write(bytes) } != null
         }.getOrDefault(false)
-        Toast.makeText(this, if (ok) "${entries.size}件をエクスポートしました" else "書き出せませんでした", Toast.LENGTH_LONG).show()
+        Toast.makeText(
+            this,
+            if (ok) "パスワード付きで書き出しました(読み取りにはパスワードが必要です)" else "書き出せませんでした",
+            Toast.LENGTH_LONG,
+        ).show()
+    }
+
+    /** Key stretching takes about a second, so it runs off the UI thread behind a small dialog. */
+    private fun <T> runBusy(message: String, work: () -> T, done: (Result<T>) -> Unit) {
+        val dialog = AlertDialog.Builder(this).setMessage(message).setCancelable(false).show()
+        Thread {
+            val result = runCatching(work)
+            runOnUiThread {
+                dialog.dismiss()
+                if (!isFinishing && !isDestroyed) done(result)
+            }
+        }.start()
+    }
+
+    private fun passwordField(hint: String) = EditText(this).apply {
+        this.hint = hint
+        setSingleLine()
+        inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_VARIATION_PASSWORD
+        imeOptions = android.view.inputmethod.EditorInfo.IME_FLAG_NO_PERSONALIZED_LEARNING
+    }
+
+    private fun askPassword(title: String, error: String?, onPassword: (CharArray) -> Unit) {
+        val field = passwordField("パスワード")
+        val dialog = AlertDialog.Builder(this).setTitle(title).setView(field)
+            .setNegativeButton("キャンセル", null).setPositiveButton("OK", null).create()
+        dialog.setOnShowListener {
+            error?.let { field.error = it }
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                if (field.text.isEmpty()) { field.error = "パスワードを入力してください"; return@setOnClickListener }
+                val password = CharArray(field.text.length).also { field.text.getChars(0, it.size, it, 0) }
+                dialog.dismiss()
+                onPassword(password)
+            }
+        }
+        dialog.show()
+    }
+
+    private fun askNewPassword(onPassword: (CharArray) -> Unit) {
+        val first = passwordField("パスワード(${SnippetCrypto.MIN_PASSWORD_LENGTH}文字以上)")
+        val second = passwordField("パスワード(確認)")
+        val form = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(48, 16, 48, 0)
+            addView(first); addView(second)
+        }
+        val dialog = AlertDialog.Builder(this).setTitle("エクスポートのパスワード")
+            .setMessage("このパスワードがないとファイルを読み取れません。忘れると復元できません。")
+            .setView(form).setNegativeButton("キャンセル", null).setPositiveButton("暗号化して保存", null).create()
+        dialog.setOnShowListener {
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE).setOnClickListener {
+                val a = first.text.toString()
+                when {
+                    a.length < SnippetCrypto.MIN_PASSWORD_LENGTH ->
+                        first.error = "${SnippetCrypto.MIN_PASSWORD_LENGTH}文字以上にしてください"
+                    a != second.text.toString() -> second.error = "パスワードが一致しません"
+                    else -> { dialog.dismiss(); onPassword(a.toCharArray()) }
+                }
+            }
+        }
+        dialog.show()
     }
 
     private fun persist(items: List<String>): Boolean {
