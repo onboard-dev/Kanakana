@@ -205,6 +205,7 @@ class ZinnaImeService : InputMethodService() {
         enginePreferences.registerOnSharedPreferenceChangeListener(enginePreferenceListener)
         refreshZenzai()
         karukanEngine = KarukanEngine(this)
+        karukanEngine.inferenceTimer = { InputPerformance.record(this, "karukan", it) }
         enqueueInput { if (!session.isAvailable()) {
             // Without the native engine there is nothing useful to do; the keyboard still renders
             // so the user can switch away rather than being stuck with a dead input field.

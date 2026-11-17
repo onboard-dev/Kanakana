@@ -98,7 +98,9 @@ private fun EngineDictScreen() {
             Card(shape = RoundedCornerShape(14.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("自分に合った変換を選ぶ", style = MaterialTheme.typography.titleMedium)
-                    Text("標準の変換は追加ダウンロードなしで使えます。より多くの候補が必要な場合は、下のAI変換を試せます。")
+                    Text("標準の変換(Mozc)は追加ダウンロードなしで使えます。より多くの候補が必要な場合は、下のAI変換を試せます。")
+                    Text("AI変換(Karukan・zenzai-plus)は、前後の文脈を読んで自然な候補を選ぶ仕組みです。Mozc だけのときより計算が増えるため、端末によっては候補が出るまで少し時間がかかります。変換は端末の中だけで行い、外には送りません。",
+                        style = MaterialTheme.typography.bodySmall)
                     Text("文章の誤りを直す「AI文章校正」は別の機能です。モデルは端末内で処理し、取得には通信と保存容量が必要です。",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = {
@@ -116,7 +118,7 @@ private fun EngineDictScreen() {
                     }
                     EngineChoice(
                         title = "自動（おすすめ）",
-                        subtitle = "AI候補がないときは導入済みKarukanを使用。未導入ならMozc",
+                        subtitle = "ふだんは標準の変換(Mozc)。AIの候補が出ないときは、軽いAI「Karukan」が文脈から補います。Karukanが未導入なら Mozc だけで変換",
                         selected = engine == ImeSettings.ConversionEngine.AUTO,
                         onClick = {
                             engine = ImeSettings.ConversionEngine.AUTO
@@ -125,7 +127,7 @@ private fun EngineDictScreen() {
                     )
                     EngineChoice(
                         title = "Mozc",
-                        subtitle = "Karukanを使用せず、端末内の辞書と学習履歴で変換",
+                        subtitle = "AIを使わず、辞書と学習履歴だけで変換します。処理が軽く、すぐ候補が出ます",
                         selected = engine == ImeSettings.ConversionEngine.MOZC,
                         onClick = {
                             engine = ImeSettings.ConversionEngine.MOZC
@@ -134,7 +136,7 @@ private fun EngineDictScreen() {
                     )
                     EngineChoice(
                         title = "Karukan ニューラル変換（実験的）",
-                        subtitle = "AI有効時もKarukan候補を生成。変換キーでもKarukanを使用",
+                        subtitle = "軽いAI(約32MB)が、前後の文脈から自然な変換を考えます。常に Karukan の候補を出し、変換キーでも使います",
                         selected = engine == ImeSettings.ConversionEngine.KARUKAN,
                         enabled = modelState is KarukanModelManager.State.Installed &&
                             KarukanPlatform.isSupported,

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The picture fills 84dp of the 108dp adaptive canvas, so the whole cicada stays inside the
+     circle or squircle a launcher cuts out (the visible part is about 72dp). -->
+<inset xmlns:android="http://schemas.android.com/apk/res/android"
+    android:drawable="@drawable/kanakana_icon_art"
+    android:inset="12dp" />

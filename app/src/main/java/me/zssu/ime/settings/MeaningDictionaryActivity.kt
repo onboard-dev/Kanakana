@@ -90,7 +90,7 @@ private fun MeaningDictionaryScreen(modifier: Modifier = Modifier) {
             OutlinedButton(
                 onClick = {
                     pendingExport = repository.exampleJson()
-                    exporter.launch("komorebi-meaning-dictionary-example.json")
+                    exporter.launch("kanakana-meaning-dictionary-example.json")
                 },
                 modifier = Modifier.weight(1f),
             ) { Text("ひな形を書出") }

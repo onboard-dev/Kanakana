@@ -91,7 +91,7 @@ class ProofreadRemoteActivity : Activity() {
             addView(group)
 
             addView(heading("OpenRouter"))
-            addView(note("API キーは端末のキーストアで暗号化して保存し、バックアップには含めません。"))
+            addView(note("API キーは端末のキーストアで暗号化して保存します。設定のバックアップを書き出すと、パスフレーズで暗号化して含まれます。"))
             addView(keyField)
             addView(routerModel)
             addView(Button(context).apply {

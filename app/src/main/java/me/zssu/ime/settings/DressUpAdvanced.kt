@@ -83,7 +83,7 @@ internal fun DressUpAdvanced(
             OutlinedButton(onClick = { pick.launch(arrayOf("application/json", "text/*")) }) { Text("取り込み") }
             OutlinedButton(onClick = {
                 exporting = source
-                export.launch("${selected ?: "komorebi"}.json")
+                export.launch("${selected ?: "kanakana"}.json")
             }, enabled = source != null) { Text("書き出し") }
         }
         OutlinedTextField(json, { json = it }, label = { Text("JSONを編集") },

@@ -21,7 +21,7 @@ internal object InputPerformance {
             val proofreading = ProofreadModelStore.state(context, ProofreadModelStore.selected(context))
             appendLine("AI 文章校正モデル: ${if (proofreading is ProofreadModelStore.State.Ready) "取得済み" else "未取得"}")
             appendLine("復元予約: ${if (me.zssu.ime.mozc.ProfileBackup.hasStagedRestore(context)) "あり" else "なし"}")
-            for ((key, label) in listOf("key" to "キー処理", "display" to "キー受付から候補の描画準備まで", "ai" to "AI 推論")) {
+            for ((key, label) in listOf("key" to "キー処理", "display" to "キー受付から候補の描画準備まで", "ai" to "AI 推論(zenzai-plus)", "karukan" to "AI 推論(Karukan)")) {
                 val count = prefs.getLong(key + "_count", 0)
                 val mean = prefs.getLong(key + "_total_us", 0) / count.coerceAtLeast(1) / 1000.0
                 appendLine("$label: $count 回 / 平均 $mean ms / 最大 ${prefs.getLong(key + "_max_us", 0) / 1000.0} ms")

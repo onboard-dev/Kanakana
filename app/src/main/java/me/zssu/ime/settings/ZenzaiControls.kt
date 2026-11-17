@@ -34,7 +34,11 @@ internal fun ZenzaiControls() {
     val available = remember(plusState) { ZenzaiEngine.isBundled(context) }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("zenzai-plus（TTT と辞書学習）", style = MaterialTheme.typography.titleMedium)
+            Text("zenzai-plus(文脈を読むAI変換と自動学習)", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "前後の文脈を読んで、いちばん自然な変換を先頭に出す、大きめのAI(約183MB)です。Mozc だけのときより、候補が出るまで少し時間がかかることがあります(端末の性能によります)。端末の中だけで動き、入力は外に送りません。",
+                style = MaterialTheme.typography.bodySmall,
+            )
             when (val current = plusState) {
                 ZenzPlusModel.State.Missing -> {
                     Text("モデルを Hugging Face から取得します（約 183 MiB、CC BY-SA 4.0）。")
@@ -80,17 +84,18 @@ internal fun ZenzaiControls() {
             if (enabled && canEnable) {
                 Text("文節の区切りと候補選択には Mozc を使用します。")
                 var autoLearning by remember { mutableStateOf(prefs.getBoolean("zenzai_auto_learning_enabled", true)) }
-                Text("入力から自動学習（確定した読み・表記と直前の文脈）")
+                Text("入力から自動学習(TTT)")
                 Switch(checked = autoLearning, onCheckedChange = {
                     autoLearning = it
                     prefs.edit().putBoolean("zenzai_auto_learning_enabled", it).apply()
                 })
-                Text("学習は端末内で行います。オフにすると未処理の入力は学習しません。進行中の学習は完了する場合があります。", style = MaterialTheme.typography.bodySmall)
+                Text("TTT は、確定した言葉と直前の文脈を、AIが少しずつ覚える仕組みです。たとえば「にしがわ」を「西川」と確定し続けると、次から「西川」が出やすくなります。Mozc の学習履歴とは別に、AI自身が覚えます。学習は端末内で行い、オフにすると未処理の入力は学習しません(進行中の学習は完了する場合があります)。", style = MaterialTheme.typography.bodySmall)
                 run {
                     OutlinedButton(onClick = {
                         prefs.edit().putLong("zenzai_train_dictionary", prefs.getLong("zenzai_train_dictionary", 0) + 1).apply()
-                    }) { Text("ユーザー辞書を学習") }
-                    Text("TTT更新: $updates / 学習済み辞書語: $trained")
+                    }) { Text("ユーザー辞書をAIに覚えさせる") }
+                    Text("登録した単語を、AIにまとめて覚えさせます。", style = MaterialTheme.typography.bodySmall)
+                    Text("自動学習(TTT)の回数: $updates / AIに覚えさせた辞書の単語: $trained")
                 }
             }
         }

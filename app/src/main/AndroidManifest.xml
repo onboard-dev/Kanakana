@@ -10,6 +10,8 @@
     <queries>
         <package android:name="me.zssu.ime.voice" />
         <package android:name="me.zssu.ime.voice.debug" />
+        <!-- Google Drive's document provider, to tell whether the Drive app is installed. -->
+        <provider android:authorities="com.google.android.apps.docs.storage" />
     </queries>
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />

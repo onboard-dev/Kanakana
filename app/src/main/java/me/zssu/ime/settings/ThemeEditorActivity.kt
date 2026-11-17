@@ -416,10 +416,10 @@ private fun ThemeEditorScreen() {
                                         Text("テーマ一式を読み込む")
                                     }
                                     OutlinedButton(onClick = {
-                                        sharing = Triple(theme, null, false); exportTheme.launch("komorebi-theme.zip")
+                                        sharing = Triple(theme, null, false); exportTheme.launch("kanakana-theme.zip")
                                     }) { Text("配色・キー設定だけを書き出す") }
                                     if (bundledMedia != null) OutlinedButton(onClick = {
-                                        sharing = Triple(theme, bundles.folder(baseId), true); exportTheme.launch("komorebi-theme-background.zip")
+                                        sharing = Triple(theme, bundles.folder(baseId), true); exportTheme.launch("kanakana-theme-background.zip")
                                     }) { Text("保存済みの背景も書き出す") }
                                     Text("テーマを自動で切り替える", style = MaterialTheme.typography.titleMedium)
                                     ChoiceChips(ThemeSchedule.Mode.entries.associateWith { it.title }, scheduleMode) {
