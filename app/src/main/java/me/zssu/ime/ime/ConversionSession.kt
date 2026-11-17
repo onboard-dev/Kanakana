@@ -63,6 +63,7 @@ internal class ConversionSession(
     }
     suspend fun setInputActive(value: Boolean) = call { me.zssu.ime.mozc.MozcEngine.get(context)?.setInputActive(value) }
     suspend fun sendText(text: String, label: String = text) = state { sendText(text, label) }
+    suspend fun sendKana(text: String, ascii: Char) = state { sendKana(text, ascii) }
     suspend fun sendSpecialKey(key: KeyEvent.SpecialKey, shift: Boolean = false) = state { sendSpecialKey(key, shift) }
     suspend fun submit() = state { submit() }
     suspend fun revert() = state { revert() }

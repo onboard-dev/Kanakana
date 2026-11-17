@@ -42,6 +42,12 @@ class KarukanEngine(context: Context) : Closeable {
 
     fun invalidate(): Long = latestGeneration.incrementAndGet()
 
+    /**
+     * Called with the nanoseconds one native conversion took, on the worker thread. Model loading
+     * is not included, so the figure is comparable between requests. Used for the timing report.
+     */
+    @Volatile var inferenceTimer: ((Long) -> Unit)? = null
+
     fun convert(
         reading: String,
         context: String,
@@ -73,12 +79,15 @@ class KarukanEngine(context: Context) : Closeable {
                     loadedFingerprint = fingerprint
                 }
                 if (closed.get() || generation != latestGeneration.get()) return@execute
-                KarukanNative.nativeConvert(
+                val started = System.nanoTime()
+                val converted = KarukanNative.nativeConvert(
                     handle,
                     reading,
                     context.takeLast(MAX_CONTEXT_CHARS),
                     candidateCount,
-                ).asList().distinct().filter(String::isNotBlank)
+                )
+                inferenceTimer?.invoke(System.nanoTime() - started)
+                converted.asList().distinct().filter(String::isNotBlank)
             }.fold(
                 onSuccess = { Result.Success(generation, it) },
                 onFailure = {

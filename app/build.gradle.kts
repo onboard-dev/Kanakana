@@ -23,7 +23,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "me.zssu.ime"
+        applicationId = "jp.kanakana.ime"
         minSdk = 24
         targetSdk = 36
         versionCode = 92

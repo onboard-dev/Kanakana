@@ -1,0 +1,19 @@
+{
+  "id": "solid_darkgreen",
+  "label": "単色 ダークグリーン",
+  "backgroundColor": "#FF006400",
+  "keyColor": "#FF247A24",
+  "keyPressedColor": "#FF478F47",
+  "modifierKeyColor": "#FF005200",
+  "labelColor": "#FFF5F5F5",
+  "flickGuideColor": "#FF388638",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FF006400",
+  "candidateTextColor": "#FFF5F5F5",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

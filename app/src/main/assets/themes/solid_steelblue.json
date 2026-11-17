@@ -1,0 +1,19 @@
+{
+  "id": "solid_steelblue",
+  "label": "単色 スチールブルー",
+  "backgroundColor": "#FF4682B4",
+  "keyColor": "#FFACC7DD",
+  "keyPressedColor": "#FF3C6E99",
+  "modifierKeyColor": "#FF4078A6",
+  "labelColor": "#FF1B1C1E",
+  "flickGuideColor": "#FF203A51",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FF4682B4",
+  "candidateTextColor": "#FF1B1C1E",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

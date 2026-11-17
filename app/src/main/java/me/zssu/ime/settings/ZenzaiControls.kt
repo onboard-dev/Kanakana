@@ -34,7 +34,11 @@ internal fun ZenzaiControls() {
     val available = remember(plusState) { ZenzaiEngine.isBundled(context) }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Text("zenzai-plus（TTT と辞書学習）", style = MaterialTheme.typography.titleMedium)
+            Text("zenzai-plus(約183MB・大きいAI)", style = MaterialTheme.typography.titleMedium)
+            Text(
+                "読みから文全体の変換を考えて、先頭の候補にします。確定した言葉を覚える「自動学習(TTT)」があり、使うほど自分の言葉づかいに合っていきます。Karukan より優先して使われます。端末の中だけで動き、入力は外に送りません。",
+                style = MaterialTheme.typography.bodySmall,
+            )
             when (val current = plusState) {
                 ZenzPlusModel.State.Missing -> {
                     Text("モデルを Hugging Face から取得します（約 183 MiB、CC BY-SA 4.0）。")
@@ -61,10 +65,12 @@ internal fun ZenzaiControls() {
 
             val modelReady = plusState is ZenzPlusModel.State.Ready
             val canEnable = available && modelReady
-            Text("zenzai-plus 変換を使用")
-            Switch(checked = enabled && canEnable, enabled = canEnable, onCheckedChange = {
-                enabled = it; settings.zenzaiPlusEnabled = it
-            })
+            Row(Modifier.fillMaxWidth(), verticalAlignment = androidx.compose.ui.Alignment.CenterVertically) {
+                Text("AI変換にzenzai-plusを優先的に使用する", modifier = Modifier.weight(1f))
+                Switch(checked = enabled && canEnable, enabled = canEnable, onCheckedChange = {
+                    enabled = it; settings.zenzaiPlusEnabled = it
+                })
+            }
             if (!canEnable) {
                 // Say why the switch is dead instead of leaving it silently unresponsive.
                 Text(
@@ -80,17 +86,18 @@ internal fun ZenzaiControls() {
             if (enabled && canEnable) {
                 Text("文節の区切りと候補選択には Mozc を使用します。")
                 var autoLearning by remember { mutableStateOf(prefs.getBoolean("zenzai_auto_learning_enabled", true)) }
-                Text("入力から自動学習（確定した読み・表記と直前の文脈）")
+                Text("入力から自動学習(TTT)")
                 Switch(checked = autoLearning, onCheckedChange = {
                     autoLearning = it
                     prefs.edit().putBoolean("zenzai_auto_learning_enabled", it).apply()
                 })
-                Text("学習は端末内で行います。オフにすると未処理の入力は学習しません。進行中の学習は完了する場合があります。", style = MaterialTheme.typography.bodySmall)
+                Text("TTT は、確定した言葉と直前の文脈を、AIが少しずつ覚える仕組みです。たとえば「にしがわ」を「西川」と確定し続けると、次から「西川」が出やすくなります。Mozc の学習履歴とは別に、AI自身が覚えます。学習は端末内で行い、オフにすると未処理の入力は学習しません(進行中の学習は完了する場合があります)。", style = MaterialTheme.typography.bodySmall)
                 run {
                     OutlinedButton(onClick = {
                         prefs.edit().putLong("zenzai_train_dictionary", prefs.getLong("zenzai_train_dictionary", 0) + 1).apply()
-                    }) { Text("ユーザー辞書を学習") }
-                    Text("TTT更新: $updates / 学習済み辞書語: $trained")
+                    }) { Text("ユーザー辞書をAIに覚えさせる") }
+                    Text("登録した単語を、AIにまとめて覚えさせます。", style = MaterialTheme.typography.bodySmall)
+                    Text("自動学習(TTT)の回数: $updates / AIに覚えさせた辞書の単語: $trained")
                 }
             }
         }

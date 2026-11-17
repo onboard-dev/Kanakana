@@ -206,9 +206,9 @@ internal object SettingsCatalog {
         SettingsEntry(
             id = "about",
             group = SettingsGroup.INFO,
-            title = "Komorebi IME について",
+            title = "KanaKana について",
             subtitle = "更新確認・バージョン・問い合わせ",
-            keywords = listOf("バージョン", "更新", "アップデート", "情報", "問い合わせ", "Komorebi"),
+            keywords = listOf("バージョン", "更新", "アップデート", "情報", "問い合わせ", "Komorebi", "KanaKana"),
             icon = Icons.Filled.Info,
             destination = SettingsDestination.ABOUT,
         ),

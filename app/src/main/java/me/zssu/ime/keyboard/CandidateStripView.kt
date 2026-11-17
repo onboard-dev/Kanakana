@@ -61,6 +61,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
     var onSnippetSearch: (() -> Unit)? = null
     var onClipboardSearch: (() -> Unit)? = null
     var onManageSnippets: (() -> Unit)? = null
+    var onAllSnippets: (() -> Unit)? = null
     var onClipboardItemSelected: ((String) -> Unit)? = null
     var onClipboardItemChanged: ((String, Boolean) -> Unit)? = null
     var onClipboardHistoryCleared: (() -> Unit)? = null
@@ -113,6 +114,19 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
     private var currentEmojiPage = EmojiPage.RECENT
     private var currentEmojiGroup: String? = null
     private var normalHeight = 0
+
+    /**
+     * Height of the key area the panels replace, as last measured by the service. Tool, edit and
+     * voice panels cover the candidate strip and the keyboard, so they use the same total height as
+     * the normal keyboard instead of a fixed size that looks cramped next to it.
+     */
+    var keyboardHeightPx = 0
+
+    private fun toolPanelHeight(): Int {
+        if (keyboardHeightPx <= 0) return dp(180)
+        val strip = if (normalHeight > 0) normalHeight else height
+        return strip + keyboardHeightPx
+    }
     private var emojiPanel: View? = null
 
     /**
@@ -515,7 +529,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         ToolAction.CLIPBOARD -> R.drawable.ic_material_content_paste
         ToolAction.EMOJI -> R.drawable.ic_material_face
         ToolAction.ONE_HAND_CYCLE -> R.drawable.ic_material_settings
-        ToolAction.SNIPPETS -> R.drawable.ic_material_content_paste
+        ToolAction.SNIPPETS -> R.drawable.ic_material_notes
         ToolAction.HEIGHT -> R.drawable.ic_ime_height
         ToolAction.SETTINGS -> R.drawable.ic_material_settings
         ToolAction.MEETS_BEAM -> R.drawable.ic_meets_beam
@@ -526,7 +540,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         ToolAction.VOICE -> R.drawable.ic_voice
         ToolAction.TRANSLATE -> R.drawable.ic_ai_style
         ToolAction.HANDWRITING -> R.drawable.ic_ime_cursor_right
-        ToolAction.IMAGE_TEXT -> R.drawable.ic_material_content_paste
+        ToolAction.IMAGE_TEXT -> R.drawable.ic_material_image
     }
     fun showTools() {
         if (voicePanelShowing) return
@@ -565,7 +579,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
                        onApply: () -> Unit, onRetry: () -> Unit, onClose: () -> Unit) {
         if (!voicePanelShowing) paletteHeight(true)
         voicePanelShowing = true
-        layoutParams = layoutParams.apply { height = dp(180) }
+        layoutParams = layoutParams.apply { height = toolPanelHeight() }
         setContainerFillWidth(false)
         setContainerFillWidth(true)
         container.removeAllViews()
@@ -608,7 +622,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
     fun dismissVoicePanel() { voicePanelShowing = false; showTools() }
     private fun showToolMenu(editing: Boolean = false) {
         paletteHeight(true)
-        layoutParams = layoutParams.apply { height = dp(180) }
+        layoutParams = layoutParams.apply { height = toolPanelHeight() }
         container.removeAllViews()
         setContainerFillWidth(false)
         toolMenuShowing = true
@@ -716,9 +730,34 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         container.addView(scroll, LinearLayout.LayoutParams(width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels, dp(180)))
     }
 
+    /** The few snippets used most recently, for one-tap insertion from a long press on the menu. */
+    fun showRecentSnippets(items: List<String>) {
+        paletteHeight(true)
+        container.removeAllViews()
+        setContainerFillWidth(false)
+        val panel = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }
+        panel.addView(iconButton(R.drawable.ic_material_arrow_back, "閉じる") { showTools() })
+        panel.addView(TextView(context).apply {
+            text = "最近使った定型文"; applyTheme(this); setTypeface(typeface, android.graphics.Typeface.BOLD)
+        })
+        if (items.isEmpty()) panel.addView(TextView(context).apply {
+            text = "まだ使った定型文がありません"; applyTheme(this)
+        })
+        for (value in items) panel.addView(TextView(context).apply {
+            text = value; maxLines = 2; applyTheme(this)
+            setOnClickListener { onSnippetSelected?.invoke(value) }
+        })
+        panel.addView(TextView(context).apply {
+            text = "すべての定型文を見る"; applyTheme(this)
+            setOnClickListener { onAllSnippets?.invoke() }
+        })
+        val scroll = android.widget.ScrollView(context).apply { addView(panel) }
+        container.addView(scroll, LinearLayout.LayoutParams(width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels, dp(180)))
+    }
+
     fun showEditPanel() {
         paletteHeight(true)
-        layoutParams = layoutParams.apply { height = dp(180) }
+        layoutParams = layoutParams.apply { height = toolPanelHeight() }
         container.removeAllViews()
         setContainerFillWidth(false)
         val panel = LinearLayout(context).apply { orientation = LinearLayout.VERTICAL }

@@ -98,7 +98,7 @@ private fun UserDictionaryScreen() {
                         Text("取込")
                     }
                     TextButton(
-                        onClick = { exportFile.launch("komorebi-user-dictionary.txt") },
+                        onClick = { exportFile.launch("kanakana-user-dictionary.txt") },
                         enabled = entries.isNotEmpty(),
                     ) { Text("書出") }
                     TextButton(

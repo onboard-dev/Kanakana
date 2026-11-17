@@ -1,0 +1,19 @@
+{
+  "id": "solid_dimgray",
+  "label": "単色 ディムグレー",
+  "backgroundColor": "#FF696969",
+  "keyColor": "#FF7E7E7E",
+  "keyPressedColor": "#FF939393",
+  "modifierKeyColor": "#FF565656",
+  "labelColor": "#FFF5F5F5",
+  "flickGuideColor": "#FF8A8A8A",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FF696969",
+  "candidateTextColor": "#FFF5F5F5",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

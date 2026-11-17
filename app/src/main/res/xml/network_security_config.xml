@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android blocks plain http by default. The optional Ollama proofreading engine talks to a server on
+  the user's own network (LAN, Tailscale), which is normally plain http, and a network config cannot
+  allow "private addresses only". So cleartext is permitted here and ProofreadRemote refuses http for
+  any public address itself. Every other URL the app uses is https.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="true" />
+</network-security-config>

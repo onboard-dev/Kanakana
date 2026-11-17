@@ -35,6 +35,8 @@ internal fun BackupCard() {
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     var pending by remember { mutableStateOf<Pending?>(null) }
+    // True when the user came in through the Google Drive buttons: same backup, same picker.
+    var viaDrive by remember { mutableStateOf(false) }
     var passphrase by remember { mutableStateOf("") }
     var message by remember { mutableStateOf<String?>(null) }
     var restorePending by remember { mutableStateOf(ProfileBackup.hasStagedRestore(context)) }
@@ -129,13 +131,24 @@ internal fun BackupCard() {
             )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(
-                    onClick = { pending = Pending.EXPORT },
+                    onClick = { viaDrive = false; pending = Pending.EXPORT },
                     modifier = Modifier.weight(1f),
                 ) { Text("書き出す") }
                 OutlinedButton(
-                    onClick = { pending = Pending.IMPORT },
+                    onClick = { viaDrive = false; pending = Pending.IMPORT },
                     modifier = Modifier.weight(1f),
                 ) { Text("読み込む") }
+            }
+            Text("Google ドライブに保存して、別の端末で同じ設定を復元できます(同じパスワードで暗号化します)。", style = MaterialTheme.typography.bodySmall)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { viaDrive = true; pending = Pending.EXPORT },
+                    modifier = Modifier.weight(1f),
+                ) { Text("ドライブへ書き出す") }
+                OutlinedButton(
+                    onClick = { viaDrive = true; pending = Pending.IMPORT },
+                    modifier = Modifier.weight(1f),
+                ) { Text("ドライブから読み込む") }
             }
             if (restorePending) {
                 Text(
@@ -178,7 +191,7 @@ internal fun BackupCard() {
             title = { Text(if (exporting) "バックアップを書き出す" else "バックアップを読み込む") },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(if (exporting) "個人辞書・変換学習・定型文・設定・きせかえを暗号化して保存します。取得した言語モデルやクリップボード履歴は含みません。"
+                    Text(if (exporting) "個人辞書・変換学習・定型文・設定・きせかえ・AI校正の接続先(OpenRouterのAPIキーを含む)を暗号化して保存します。取得した言語モデルやクリップボード履歴は含みません。"
                         else "復元すると、バックアップに含まれる個人辞書・学習・設定・きせかえ等が上書きされます。必要なら今のデータを先に書き出してください。")
                     OutlinedTextField(
                         value = passphrase,
@@ -211,8 +224,14 @@ internal fun BackupCard() {
                     onClick = {
                         pending = null
                         message = null
-                        if (exporting) save.launch(ProfileBackup.suggestedFileName())
-                        else load.launch(arrayOf("*/*"))
+                        if (viaDrive && !driveAvailable(context)) {
+                            passphrase = ""
+                            message = "Google ドライブのアプリが見つかりません。Play ストアで入れて、サインインしてから試してください"
+                        } else {
+                            if (viaDrive) message = "次の画面の左上のメニューから「ドライブ」を選んでください"
+                            if (exporting) save.launch(ProfileBackup.suggestedFileName())
+                            else load.launch(arrayOf("*/*"))
+                        }
                     },
                 ) { Text("続ける") }
             },
@@ -225,6 +244,13 @@ internal fun BackupCard() {
 
 private enum class Pending { EXPORT, IMPORT }
 
+/**
+ * Google Drive shows up in the system file picker through the Drive app's document provider, so
+ * the backup needs no Google sign-in or API key of its own — only the app being installed.
+ */
+private fun driveAvailable(context: android.content.Context): Boolean =
+    context.packageManager.resolveContentProvider("com.google.android.apps.docs.storage", 0) != null
+
 private const val BACKUP_MIME = "application/octet-stream"
 
 /**
@@ -232,9 +258,13 @@ private const val BACKUP_MIME = "application/octet-stream"
  * background image they picked, and any layout or theme they dropped in by hand.
  */
 internal val BACKUP_EXTRAS = ProfileBackup.Extras(
-    preferences = listOf(ImeSettings.NAME, "emoji_palette"),
+    // keyboard_toolbar: tool order; proofread_remote / proofread: AI proofreading engine and model choice.
+    preferences = listOf(ImeSettings.NAME, "emoji_palette", "keyboard_toolbar", "proofread_remote", "proofread"),
     files = listOf("app_profiles.json"),
-    encryptedFiles = listOf("priority_candidates.enc", "snippets.enc", "snippet_name.enc", me.zssu.ime.ime.AppLearning.FILE_NAME),
+    encryptedFiles = listOf(
+        "priority_candidates.enc", "snippets.enc", "snippet_name.enc", me.zssu.ime.ime.AppLearning.FILE_NAME,
+        "snippet_recent.enc", "openrouter_key.enc",
+    ),
     directories = listOf(
         ImeSettings.BACKGROUND_DIR,
         ImeSettings.CUSTOM_BACKGROUND_DIR,

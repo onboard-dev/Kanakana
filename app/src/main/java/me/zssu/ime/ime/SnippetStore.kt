@@ -18,6 +18,23 @@ class SnippetStore(context: Context) {
         val array = JSONArray(SecureStore.read(file) ?: "[]")
         (0 until array.length()).map { array.getString(it) }.take(100)
     }.getOrDefault(emptyList())
+    private val recentFile = File(context.applicationContext.filesDir, "snippet_recent.enc")
+
+    /** Most recently inserted snippets, newest first, limited to ones that still exist. */
+    fun recent(limit: Int = 5): List<String> = runCatching {
+        val array = JSONArray(SecureStore.read(recentFile) ?: "[]")
+        val current = entries().toHashSet()
+        (0 until array.length()).map { array.getString(it) }.filter { it in current }.take(limit)
+    }.getOrDefault(emptyList())
+
+    fun markUsed(value: String) {
+        val updated = (listOf(value) + runCatching {
+            val array = JSONArray(SecureStore.read(recentFile) ?: "[]")
+            (0 until array.length()).map { array.getString(it) }
+        }.getOrDefault(emptyList())).distinct().take(20)
+        SecureStore.writeBytes(recentFile, JSONArray(updated).toString().toByteArray())
+    }
+
     fun save(values: List<String>): Boolean = SecureStore.writeBytes(
         file, JSONArray(values.map { it.trim().take(2000) }.filter { it.isNotEmpty() }.distinct().take(100)).toString().toByteArray(),
     )

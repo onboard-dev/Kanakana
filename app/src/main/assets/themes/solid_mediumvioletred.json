@@ -1,0 +1,19 @@
+{
+  "id": "solid_mediumvioletred",
+  "label": "単色 ミディアムバイオレットレッド",
+  "backgroundColor": "#FFC71585",
+  "keyColor": "#FFCF3696",
+  "keyPressedColor": "#FFD757A7",
+  "modifierKeyColor": "#FFA3116D",
+  "labelColor": "#FFF5F5F5",
+  "flickGuideColor": "#FFD348A0",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FFC71585",
+  "candidateTextColor": "#FFF5F5F5",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

@@ -110,7 +110,7 @@ private fun ProofreadModelScreen() {
                     }
                     Text(
                         "選択した文章、またはカーソル直前の600文字を、ダウンロードしたモデルで校正します。" +
-                            "校正対象の文章と結果は端末内で処理し、ネットワークには送信しません。",
+                            "校正対象の文章と結果は、既定では端末内で処理し、ネットワークには送信しません(下の「校正の接続先」で OpenRouter / Ollama を選んだ場合だけ送信します)。",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Text(
@@ -126,6 +126,10 @@ private fun ProofreadModelScreen() {
                         )
                     }
                 }
+            }
+
+            OutlinedButton(onClick = { context.startActivity(android.content.Intent(context, ProofreadRemoteActivity::class.java)) }) {
+                Text("校正の接続先(OpenRouter / Ollama)")
             }
 
             specs.forEachIndexed { index, spec ->

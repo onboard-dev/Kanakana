@@ -11,17 +11,17 @@ internal object InputPerformance {
         val prefs = context.getSharedPreferences("input_performance", Context.MODE_PRIVATE)
         val settings = me.zssu.ime.settings.ImeSettings(context)
         return buildString {
-            appendLine("Komorebi IME 性能診断 / Android API ${android.os.Build.VERSION.SDK_INT}")
+            appendLine("KanaKana 性能診断 / Android API ${android.os.Build.VERSION.SDK_INT}")
             val version = runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }.getOrNull()
             appendLine("アプリ版: $version / 機種: ${android.os.Build.MANUFACTURER} ${android.os.Build.MODEL}")
             appendLine("入力処理エラー: ${prefs.getLong("error_count", 0)} 回")
-            appendLine("有効な変換設定: ${settings.conversionEngine}")
+            appendLine("有効な変換設定: ${settings.conversionEngine} / zenzai-plus 優先: ${if (settings.zenzaiPlusEnabled) "オン" else "オフ"} / Karukan: ${if (settings.karukanEnabled) "オン" else "オフ"}")
             appendLine("Karukan モデル: ${if (me.zssu.ime.karukan.KarukanModelStore.files(context).ready) "取得済み" else "未取得"}")
             appendLine("zenzai-plus: ${if (ZenzaiEngine.isBundled(context)) "利用可能" else "未搭載"}")
             val proofreading = ProofreadModelStore.state(context, ProofreadModelStore.selected(context))
             appendLine("AI 文章校正モデル: ${if (proofreading is ProofreadModelStore.State.Ready) "取得済み" else "未取得"}")
             appendLine("復元予約: ${if (me.zssu.ime.mozc.ProfileBackup.hasStagedRestore(context)) "あり" else "なし"}")
-            for ((key, label) in listOf("key" to "キー処理", "display" to "キー受付から候補の描画準備まで", "ai" to "AI 推論")) {
+            for ((key, label) in listOf("key" to "キー処理", "display" to "キー受付から候補の描画準備まで", "ai" to "AI 推論(zenzai-plus)", "karukan" to "AI 推論(Karukan)")) {
                 val count = prefs.getLong(key + "_count", 0)
                 val mean = prefs.getLong(key + "_total_us", 0) / count.coerceAtLeast(1) / 1000.0
                 appendLine("$label: $count 回 / 平均 $mean ms / 最大 ${prefs.getLong(key + "_max_us", 0) / 1000.0} ms")

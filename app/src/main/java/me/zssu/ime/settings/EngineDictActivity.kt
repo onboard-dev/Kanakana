@@ -68,6 +68,7 @@ private fun EngineDictScreen() {
     var useDict by remember { mutableStateOf(settings.useProperNounDictionary) }
     var useAiDict by remember { mutableStateOf(settings.useAiTechDictionary) }
     var engine by remember { mutableStateOf(settings.conversionEngine) }
+    var karukanOn by remember { mutableStateOf(settings.karukanEnabled) }
     var modelState by remember { mutableStateOf(modelManager.currentState()) }
     DisposableEffect(modelManager) {
         val observation = modelManager.observe { modelState = it }
@@ -98,7 +99,9 @@ private fun EngineDictScreen() {
             Card(shape = RoundedCornerShape(14.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text("自分に合った変換を選ぶ", style = MaterialTheme.typography.titleMedium)
-                    Text("標準の変換は追加ダウンロードなしで使えます。より多くの候補が必要な場合は、下のAI変換を試せます。")
+                    Text("標準の変換(Mozc)は追加ダウンロードなしで使えます。より多くの候補が必要な場合は、下のAI変換を試せます。")
+                    Text("AI変換(Karukan・zenzai-plus)は、前後の文脈を読んで自然な候補を選ぶ仕組みです。Mozc だけのときより計算が増えるため、端末によっては候補が出るまで少し時間がかかります。変換は端末の中だけで行い、外には送りません。",
+                        style = MaterialTheme.typography.bodySmall)
                     Text("文章の誤りを直す「AI文章校正」は別の機能です。モデルは端末内で処理し、取得には通信と保存容量が必要です。",
                         style = MaterialTheme.typography.bodySmall)
                     OutlinedButton(onClick = {
@@ -106,7 +109,7 @@ private fun EngineDictScreen() {
                     }) { Text("文章校正のモデルを選ぶ") }
                 }
             }
-            // Engine selector and optional on-device model
+            // Engine: Mozc only, or automatic (Mozc plus the AI converters chosen below).
             Card(shape = RoundedCornerShape(14.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
@@ -116,7 +119,7 @@ private fun EngineDictScreen() {
                     }
                     EngineChoice(
                         title = "自動（おすすめ）",
-                        subtitle = "AI候補がないときは導入済みKarukanを使用。未導入ならMozc",
+                        subtitle = "標準の変換(Mozc)に、下で選んだAI変換を足します。AIを選ばなければ Mozc だけで変換します",
                         selected = engine == ImeSettings.ConversionEngine.AUTO,
                         onClick = {
                             engine = ImeSettings.ConversionEngine.AUTO
@@ -124,51 +127,63 @@ private fun EngineDictScreen() {
                         },
                     )
                     EngineChoice(
-                        title = "Mozc",
-                        subtitle = "Karukanを使用せず、端末内の辞書と学習履歴で変換",
+                        title = "Mozcのみ",
+                        subtitle = "AIを使わず、辞書と学習履歴だけで変換します。処理が軽く、すぐ候補が出ます",
                         selected = engine == ImeSettings.ConversionEngine.MOZC,
                         onClick = {
                             engine = ImeSettings.ConversionEngine.MOZC
                             settings.conversionEngine = engine
                         },
                     )
-                    EngineChoice(
-                        title = "Karukan ニューラル変換（実験的）",
-                        subtitle = "AI有効時もKarukan候補を生成。変換キーでもKarukanを使用",
-                        selected = engine == ImeSettings.ConversionEngine.KARUKAN,
-                        enabled = modelState is KarukanModelManager.State.Installed &&
-                            KarukanPlatform.isSupported,
-                        onClick = {
-                            engine = ImeSettings.ConversionEngine.KARUKAN
-                            settings.conversionEngine = engine
-                        },
-                    )
-                    KarukanModelControls(
-                        state = modelState,
-                        supported = KarukanPlatform.isSupported,
-                        onInstall = modelManager::install,
-                        onCancel = modelManager::cancel,
-                        onDelete = {
-                            modelManager.delete()
-                            engine = ImeSettings.ConversionEngine.MOZC
-                            settings.conversionEngine = engine
-                        },
-                    )
-                    if (!KarukanPlatform.isSupported) {
-                        Text(
-                            "このCPUでは現在Karukanを利用できません。Mozcは引き続き利用できます。",
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error,
-                        )
-                    }
-                    Text(describeEngine(context, engine, modelState),
+                    Text(describeEngine(context, engine),
                         style = MaterialTheme.typography.bodyMedium)
                     Text(describeDictionaries(context), style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
             }
 
-            ZenzaiControls()
+            if (engine == ImeSettings.ConversionEngine.AUTO) {
+                Card(shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("AI変換の優先順位", style = MaterialTheme.typography.titleMedium)
+                        Text("zenzai-plus が上、Karukan が下です。両方オンのときは、zenzai-plus の候補を先頭に出し、出なかったときだけ Karukan が補います。どちらもオフなら Mozc だけで変換します。",
+                            style = MaterialTheme.typography.bodySmall)
+                        Text("AIの変換は端末の中だけで行い、外には送りません。Mozc だけのときより計算が増えるため、候補が出るまで少し時間がかかります(Galaxy S23 の測定で、どちらも平均 約0.4秒。Mozc は約0.05秒)。キーを打つ手が重くなることはありませんでした。",
+                            style = MaterialTheme.typography.bodySmall)
+                    }
+                }
+
+                ZenzaiControls()
+
+                // Karukan: a smaller model with no learning, used after zenzai-plus.
+                Card(shape = RoundedCornerShape(14.dp)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text("Karukan ニューラル変換（実験的・約32MB・小さいAI）", style = MaterialTheme.typography.titleMedium)
+                        Text("小さくて軽いAIです。前後の文脈を見て、自然な候補を出します。自動学習はありません。変換キーを押したときにも使います。zenzai-plus がオンのときは zenzai-plus が優先され、候補が出なかったときだけ補います。",
+                            style = MaterialTheme.typography.bodySmall)
+                        KarukanModelControls(
+                            state = modelState,
+                            supported = KarukanPlatform.isSupported,
+                            onInstall = modelManager::install,
+                            onCancel = modelManager::cancel,
+                            onDelete = modelManager::delete,
+                        )
+                        val karukanReady = modelState is KarukanModelManager.State.Installed && KarukanPlatform.isSupported
+                        SwitchRow(
+                            "Karukan変換を使用する",
+                            if (karukanReady) "オンにすると、Karukan が候補を出します" else "上のモデルをダウンロードすると、オンにできます",
+                            karukanOn && karukanReady, karukanReady,
+                        ) { karukanOn = it; settings.karukanEnabled = it }
+                        if (!KarukanPlatform.isSupported) {
+                            Text(
+                                "このCPUでは現在Karukanを利用できません。Mozcは引き続き利用できます。",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.error,
+                            )
+                        }
+                    }
+                }
+            }
             SystemDictionaryControls()
 
             // Dictionary toggles
@@ -304,15 +319,10 @@ private fun describeDictionaries(context: Context): String {
 private fun describeEngine(
     context: Context,
     selected: ImeSettings.ConversionEngine,
-    modelState: KarukanModelManager.State,
 ): String {
     val engine = MozcEngine.get(context) ?: return "読み込み失敗"
-    return when {
-        selected == ImeSettings.ConversionEngine.KARUKAN &&
-            modelState is KarukanModelManager.State.Installed ->
-            "Karukan変換 / 端末内推論 / Mozcかな入力"
-        selected == ImeSettings.ConversionEngine.AUTO && modelState is KarukanModelManager.State.Installed ->
-            "自動 / AI候補がないときはKarukan / Mozcかな入力"
-        else -> "Mozc / オフライン動作中 / 辞書 v${engine.dataVersion.ifEmpty { "unknown" }}"
+    if (selected == ImeSettings.ConversionEngine.MOZC) {
+        return "Mozcのみ / オフライン動作中 / 辞書 v${engine.dataVersion.ifEmpty { "unknown" }}"
     }
+    return "自動 / Mozcかな入力 / AIは下の設定で選択"
 }

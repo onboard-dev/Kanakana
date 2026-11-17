@@ -62,7 +62,7 @@ internal object ZenzPlusModel {
                 try {
                     connection.connectTimeout = 20000; connection.readTimeout = 30000
                     connection.instanceFollowRedirects = true
-                    connection.setRequestProperty("User-Agent", "Komorebi-IME/ZenzPlusModelInstaller")
+                    connection.setRequestProperty("User-Agent", "KanaKana/ZenzPlusModelInstaller")
                     if (offset > 0 && offset < SIZE) connection.setRequestProperty("Range", "bytes=$offset-")
                     if (offset < SIZE) {
                         val code = connection.responseCode

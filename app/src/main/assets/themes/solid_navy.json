@@ -1,0 +1,19 @@
+{
+  "id": "solid_navy",
+  "label": "単色 ネイビー",
+  "backgroundColor": "#FF000080",
+  "keyColor": "#FF242492",
+  "keyPressedColor": "#FF4747A4",
+  "modifierKeyColor": "#FF000069",
+  "labelColor": "#FFF5F5F5",
+  "flickGuideColor": "#FF38389C",
+  "flickGuideLabelColor": "#FFFFFFFF",
+  "flickGuideSelectedLabelColor": "#FFFFFFFF",
+  "candidateBackgroundColor": "#FF000080",
+  "candidateTextColor": "#FFF5F5F5",
+  "keyHeightDp": 56.0,
+  "keyGapDp": 2.0,
+  "keyCornerRadiusDp": 8.0,
+  "labelSizeSp": 17.0,
+  "hapticFeedback": true
+}

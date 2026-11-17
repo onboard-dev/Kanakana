@@ -48,6 +48,7 @@
         ["research/simeji-customization", "着せ替えの機能比較", "Simejiの公式情報とKomorebiの対応範囲", "docs/research/simeji-customization.md", "Simeji theme comparison 着せ替え"],
         ["research/keyboard-theme-art", "着せ替え素材", "同梱画像の一覧と生成記録", "docs/research/keyboard-theme-art.md", "theme art AI 画像 背景 キー"],
         ["keyboard-strengthening", "キーボードの強化点", "文節操作・学習・編集パネル", "docs/keyboard-strengthening.md", "keyboard"],
+        ["research/ai-conversion-timing", "AI変換の速度測定", "Mozc・Karukan・zenzai-plus の処理時間の比較", "docs/research/ai-conversion-timing.md", "ai speed timing zenzai karukan mozc 速度 遅い 測定"],
         ["zenzai-plus", "AI変換の仕組み", "zenzai-plus が端末内で変換するまで", "docs/zenzai-plus.md", "zenzai ai"],
         ["proofreading", "AI文章校正の仕組み", "校正モデルと処理の流れ", "docs/proofreading.md", "proofread 校正"],
         ["profile-encryption", "保存データの暗号化", "何を、どう暗号化して保存するか", "docs/profile-encryption.md", "encryption keystore"],

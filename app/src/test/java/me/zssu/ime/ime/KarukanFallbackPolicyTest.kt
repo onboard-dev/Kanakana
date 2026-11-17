@@ -5,20 +5,29 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class KarukanFallbackPolicyTest {
-    @Test fun automaticFallbackCoversDisabledOrMissingAiCandidates() {
-        assertTrue(KarukanFallbackPolicy.shouldUse(ConversionEngine.AUTO, true, true, false))
-        assertFalse(KarukanFallbackPolicy.shouldUse(ConversionEngine.AUTO, true, true, true))
+    private fun use(
+        mode: ConversionEngine = ConversionEngine.AUTO, enabled: Boolean = true,
+        ready: Boolean = true, permitted: Boolean = true, ai: Boolean = false,
+    ) = KarukanFallbackPolicy.shouldUse(mode, enabled, ready, permitted, ai)
+
+    @Test fun karukanCoversWhatZenzaiPlusDidNotSupply() {
+        assertTrue(use(ai = false))
     }
-    @Test fun explicitKarukanWorksAlongsideAi() {
-        assertTrue(KarukanFallbackPolicy.shouldUse(ConversionEngine.KARUKAN, true, true, true))
+
+    @Test fun zenzaiPlusHasPriorityOverKarukan() {
+        assertFalse(use(ai = true))
     }
+
+    @Test fun karukanNeedsItsOwnSwitch() {
+        assertFalse(use(enabled = false))
+    }
+
+    @Test fun mozcOnlyUsesNoAi() {
+        assertFalse(use(mode = ConversionEngine.MOZC))
+    }
+
     @Test fun privacyAndModelAvailabilityAlwaysWin() {
-        for (mode in ConversionEngine.entries) {
-            assertFalse(KarukanFallbackPolicy.shouldUse(mode, true, false, false))
-            assertFalse(KarukanFallbackPolicy.shouldUse(mode, false, true, false))
-        }
-    }
-    @Test fun mozcOnlyIsAnExplicitOptOut() {
-        assertFalse(KarukanFallbackPolicy.shouldUse(ConversionEngine.MOZC, true, true, false))
+        assertFalse(use(permitted = false))
+        assertFalse(use(ready = false))
     }
 }

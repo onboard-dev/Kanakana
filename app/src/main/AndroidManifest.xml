@@ -10,6 +10,8 @@
     <queries>
         <package android:name="me.zssu.ime.voice" />
         <package android:name="me.zssu.ime.voice.debug" />
+        <!-- Google Drive's document provider, to tell whether the Drive app is installed. -->
+        <provider android:authorities="com.google.android.apps.docs.storage" />
     </queries>
     <uses-permission android:name="android.permission.NFC" />
     <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
@@ -29,6 +31,7 @@
     <application
         android:name=".KomorebiApplication"
         android:allowBackup="false"
+        android:networkSecurityConfig="@xml/network_security_config"
         android:dataExtractionRules="@xml/data_extraction_rules"
         android:fullBackupContent="@xml/backup_rules"
         android:icon="@mipmap/ic_launcher"
@@ -56,6 +59,11 @@
             android:exported="false"
             android:label="AI 文章校正"
             android:theme="@style/Theme.ZinnaIme.Proofread" />
+        <activity
+            android:name=".ime.ProofreadRemoteActivity"
+            android:exported="false"
+            android:label="AI 校正の接続先"
+            android:parentActivityName=".settings.SettingsActivity" />
         <activity
             android:name=".ime.ProofreadModelActivity"
             android:exported="false"
@@ -139,7 +147,7 @@
         <activity
             android:name=".settings.AboutActivity"
             android:exported="false"
-            android:label="Komorebi IME について"
+            android:label="KanaKana について"
             android:parentActivityName=".settings.SettingsActivity" />
 
         <activity

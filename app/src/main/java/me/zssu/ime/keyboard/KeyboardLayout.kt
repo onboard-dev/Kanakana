@@ -121,7 +121,12 @@ sealed interface KeyAction {
 
     @Serializable
     @SerialName("delete_chunk")
-    data class DeleteChunk(val forward: Boolean = false, val toLineBoundary: Boolean = false) : KeyAction
+    /** [toStart]: delete everything before the caret, across lines, to the start of the field. */
+    data class DeleteChunk(
+        val forward: Boolean = false,
+        val toLineBoundary: Boolean = false,
+        val toStart: Boolean = false,
+    ) : KeyAction
 
     @Serializable
     @SerialName("enter")
@@ -215,6 +220,12 @@ enum class InputStyle(
     QWERTY_HIRAGANA(20, HIRAGANA, fullWidthSpace = true),
     QWERTY_HALFWIDTH_ASCII(22, HALF_ASCII, fullWidthSpace = false),
     GODAN_HIRAGANA(30, HIRAGANA, fullWidthSpace = true),
+
+    /**
+     * JIS kana input from a physical keyboard. Table 0 is Mozc's DEFAULT_TABLE, which follows
+     * Config.preedit_method; [me.zssu.ime.ime.MozcSession] sets that to KANA for this style only.
+     */
+    HARDWARE_KANA(0, HIRAGANA, fullWidthSpace = true),
 }
 
 // mozc.commands.CompositionMode. The romanji table decides what a keystroke transliterates to, but

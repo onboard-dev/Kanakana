@@ -79,7 +79,10 @@ object ProfileBackup {
         setOf(".server.lock", ".session.ipc", ".registry.db", ".encrypt_key.db")
 
     /** Largest archive we will unpack, so a hostile file cannot exhaust storage. */
-    private val SEALED_FILES = setOf("priority_candidates.enc", "snippets.enc", "snippet_name.enc", "app_learning.enc")
+    val SEALED_FILES = setOf(
+        "priority_candidates.enc", "snippets.enc", "snippet_name.enc", "app_learning.enc",
+        "snippet_recent.enc", "openrouter_key.enc",
+    )
     private const val MAX_ENTRY_BYTES = 64L * 1024 * 1024
 
     sealed interface Result {
@@ -99,8 +102,8 @@ object ProfileBackup {
 
     /** Suggested file name, dated so successive backups do not overwrite each other. */
     fun suggestedFileName(): String {
-        val day = SimpleDateFormat("yyyyMMdd", Locale.US).format(Date())
-        return "komorebi-ime-$day.zinnabak"
+        val day = SimpleDateFormat("yyMMdd", Locale.US).format(Date())
+        return "kanakana-settings-$day.kkbak"
     }
 
     /**

@@ -1,3 +1,85 @@
+# KanaKana
+
+Bluetooth などの **JIS キーボードで「かな入力」ができる** Android 向け日本語 IME です。
+[Komorebi IME](https://github.com/zenskypj/Komorebi-IME)(ZenSky Project)のフォークで、
+Komorebi の機能(フリック・QWERTY、Mozc 変換、Karukan、ユーザー辞書、きせかえなど)はそのまま使えます。
+上流の README は、この下に原文のまま残しています。
+
+## KanaKana で追加したこと
+
+- **JIS かな入力**: キーに印字されたかなどおりに入力します(か → `T`、゛ → `@`、゜ → `[`)。
+  濁点・半濁点・小書き文字(`Shift`+`7` で ゃ など)は Mozc のかな入力モードが合成します。
+- **候補バーのみの表示**: ハードウェアキーボードの接続中は、画面のキーを隠して候補バーだけを表示します。
+  バー右端の `⌨` で画面キーボードを出せます。キーボードを外すと自動で戻ります。
+- **パスワード、URL、メールアドレス欄、ターミナル**では、これまでどおり英数入力になります。
+- 設定: 設定 → 入力方式 → 「ハードウェアキーボード(JISかな入力)」で、オン/オフを切り替えられます。
+
+### キー操作
+
+| キー | 動作 |
+|---|---|
+| 半角/全角 | かな入力 ⇄ 英数入力 |
+| かな(カタカナひらがな) | かな入力をオン |
+| 無変換 / 英数 | かな入力をオフ(入力中の文字は確定) |
+| スペース / 変換 | 変換、次候補 |
+| Enter | 確定 |
+| Backspace / Delete / ← → | 入力中の文字の編集・文節移動(`Shift`+← → で文節の伸縮) |
+| ↑ ↓ | 候補の移動 |
+| Esc | 変換の取り消し |
+| F6 / F7 / F8 | 入力中の文字を、ひらがな / 全角カタカナ / 半角カタカナに一括変換 |
+| F9 / F10 | アプリにそのまま渡します(かな入力では打鍵の英字に変換されて意味がないため) |
+| Ctrl / Alt との組み合わせ | そのままアプリに渡します |
+
+一部の Bluetooth キーボードは、半角/全角を `KEY_GRAVE`(scan 41)として送ります。
+KanaKana はキーのスキャンコードで判別するので、US 配列として認識されているキーボードでも動作します。
+
+## Komorebi IME からの変更点
+
+KanaKana は Komorebi IME(rc.68-dev)をもとに、次の点を変更しています。これ以外は上流と同じ動作です。
+仕様を変更したら、この一覧を更新します。
+
+| 区分 | 変更内容 |
+|---|---|
+| 名称 | アプリ名・IME 名・設定画面の表記を「KanaKana」に変更。`applicationId` は `jp.kanakana.ime`(Komorebi と共存可能)。ソースの package 名 `me.zssu.ime` は上流との差分を小さくするため据え置き |
+| 更新確認 | 確認先を `zenskypj/Komorebi-IME` から `onboard-dev/Kanakana` の Release に変更(Komorebi の APK に置き換わるのを防ぐため) |
+| About 画面 | 「Komorebi IME のフォーク」と明記し、上流の問い合わせ先メールを削除。ライセンス表示(Komorebi / Zinna-IME)は維持 |
+| 入力 | 物理 JIS キーボードのかな入力を追加(`HardwareKana.kt`、`HARDWARE_KANA` 入力スタイル、Mozc の `preedit_method=KANA`) |
+| 表示 | 物理キーボード接続中は画面のキーを隠して候補バーのみ表示。右端の `⌨` で切替。接続/切断を監視して自動で切替 |
+| 設定 | 設定 → 入力方式に「ハードウェアキーボード(JISかな入力)」を追加 |
+| 削除キー | 左フリックで、カーソルより左をすべて削除(入力欄の先頭まで)。上フリックの右側の単語/行末までの削除と、長押しの連続削除は上流のまま |
+| 定型文 | 定型文画面に、ファイルのインポート/エクスポートを追加。エクスポートは常にパスワード付きで暗号化(ファイル名 `kanakanaTemplate.enc`、AES-256-GCM、鍵は PBKDF2-HMAC-SHA256 60万回。パスワードは6文字以上、忘れると復元不可)。インポートは暗号化ファイルのほか、1行1件の平文テキスト(UTF-8、本文中の改行は2文字の「バックスラッシュ+n」)も可。追記で、重複と100件超はスキップ。保存先・取り込み元は、システムのファイル選択画面で端末内と Google ドライブから選べる |
+| 定型文 | メニューボタンの長押しで、最近使った定型文の最新5件を表示し、そのまま挿入できる(使用履歴は定型文と同じく暗号化して保存) |
+| 変換エンジン | 変換エンジンの選択肢を「自動(おすすめ)」「Mozcのみ」の2つに整理。「自動」のときだけ、zenzai-plus(「AI変換にzenzai-plusを優先的に使用する」)と Karukan(「Karukan変換を使用する」)を、説明・ダウンロード・チェックボックスのセクションで個別に選ぶ。優先順位は zenzai-plus が上。「Mozcのみ」では zenzai-plus も止まる(従来は止まらなかった)。従来の「Karukan」エンジンの選択肢(常時 Karukan 候補を足す)は廃止 |
+| ファイル名・アイコン | 書き出すファイル名の「komorebi」を「kanakana」に変更(設定のバックアップは `kanakana-settings-yyMMdd.kkbak`、ユーザー辞書は `kanakana-user-dictionary.txt`、テーマは `kanakana-theme.zip` など)。ランチャーアイコンを KanaKana のイラストに変更(元画像 `docs/branding/KanaKanaIcon.png`、再生成 `scripts/gen_kanakana_icon.py`)。バックアップファイルの中身の形式は従来と同じで、拡張子だけ `.zinnabak` から `.kkbak` に変わった(読み込み側は拡張子を見ない) |
+| バックアップ | 「バックアップと移行」に、Google ドライブへの書き出し/読み込みボタンを追加(同じパスフレーズ暗号化のバックアップを、システムのファイル選択画面の「ドライブ」に保存・取得する。Drive API や Google ログインは使わない)。バックアップの対象に、定型文の最近使った履歴・ツールの並び順・AI校正の接続先(OpenRouter の API キーを含む)を追加 |
+| テーマ | 単色のテーマ10種を追加(プラム #DDA0DD、クリムゾン #DC143C、ミディアムバイオレットレッド #C71585、ペールゴールデンロッド #EEE8AA、ダークグリーン #006400、スチールブルー #4682B4、ネイビー #000080、ディムグレー #696969、ダークスレートグレー #2F4F4F、ブラック #000000)。設定 → きせかえ → テーマで選ぶ |
+| AI 文章校正 | 校正の接続先を、端末内(初期値)・OpenRouter(API キーとモデル名)・Ollama(アドレスとモデル名)から選べる。外部を選んだときだけ文章を送信する。Ollama の http は私的ネットワークのみ。プライバシー本文(公開版・アプリ内版)も更新 |
+| 不具合修正 | 定型文が挿入できなかった問題を修正。差し込み項目 `{{名前}}` 等の正規表現で、閉じ括弧がエスケープされておらず、Android の正規表現エンジンが構文エラーにしていた(上流にも存在する不具合) |
+| 未対応 | 音声入力(別アプリ `me.zssu.ime.voice`)との連携は、パッケージ名が異なるため動作しません |
+| ネイティブ | `libmozc.so`・`mozc.data` は上流 rc.68-dev のビルド済みを流用(Git には含めない) |
+
+## ビルド
+
+```
+# JDK 17 以上と Android SDK が必要です
+./gradlew :app:assembleDebug
+```
+
+Mozc のネイティブライブラリ(`libmozc.so`、`mozc.data`)は Git に含まれません。
+Linux/WSL2 で `scripts/build_mozc.sh` を実行するか、上流の Release の APK から取り出して
+`mozc/src/main/jniLibs/<abi>/libmozc.so` と `mozc/src/main/assets/mozc.data` に置いてください。
+日本語を含むパスではビルドできません(AGP と protoc の制限)。`C:\dev\Kanakana` のような英数字のパスで作業してください。
+
+- パッケージ名は `jp.kanakana.ime`(debug は `.debug`)です。Komorebi と同じ端末に共存できます。
+- アップデート確認は、このリポジトリの Release を見ます。
+- ライセンスは Apache License 2.0 です。Komorebi IME と Zinna-IME の著作権表示は `NOTICE` と
+  アプリ内の「ライセンス」に記載しています。
+
+KanaKana への問い合わせ・不具合報告は [GitHub Issues](https://github.com/onboard-dev/Kanakana/issues) へお願いします。
+以下の上流 README にある配布先・ドキュメント・連絡先は、すべて Komorebi IME のものです。
+
+---
+
 # Komorebi IME
 
 [![技術者倫理|遵守済み](https://gijutsusharin.li/badge.svg)](https://gijutsusharin.li)

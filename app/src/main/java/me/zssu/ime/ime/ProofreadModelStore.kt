@@ -161,7 +161,7 @@ internal object ProofreadModelStore {
                     connection.connectTimeout = 20_000
                     connection.readTimeout = 30_000
                     connection.instanceFollowRedirects = true
-                    connection.setRequestProperty("User-Agent", "Komorebi-IME/ProofreadModelInstaller")
+                    connection.setRequestProperty("User-Agent", "KanaKana/ProofreadModelInstaller")
                     if (offset > 0 && offset < spec.bytes) connection.setRequestProperty("Range", "bytes=$offset-")
                     if (offset < spec.bytes) {
                         val code = connection.responseCode

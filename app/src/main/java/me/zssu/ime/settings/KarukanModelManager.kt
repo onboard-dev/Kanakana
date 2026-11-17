@@ -106,7 +106,7 @@ class KarukanModelManager private constructor(private val files: KarukanModelFil
             instanceFollowRedirects = true
             connectTimeout = 20_000
             readTimeout = 30_000
-            setRequestProperty("User-Agent", "Komorebi-IME/KarukanModelInstaller")
+            setRequestProperty("User-Agent", "KanaKana/KarukanModelInstaller")
             if (existing > 0) setRequestProperty("Range", "bytes=$existing-")
         }
         try {

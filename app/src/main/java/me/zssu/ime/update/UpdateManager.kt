@@ -25,7 +25,7 @@ internal object UpdateManager {
     private const val PREFS = "release_update_check"
     private const val JOB_ID = 0x4b5550
     private const val CHANNEL = "release_updates"
-    private const val API = "https://api.github.com/repos/zenskypj/Komorebi-IME/releases?per_page=100"
+    private const val API = "https://api.github.com/repos/onboard-dev/Kanakana/releases?per_page=100"
     private val checking = AtomicBoolean(false)
     private val main = Handler(Looper.getMainLooper())
     fun preferences(context: Context) = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
@@ -62,7 +62,7 @@ internal object UpdateManager {
     fun updateAvailable(context: Context): Boolean {
         return isNewer(context, latest(context))
     }
-    fun releaseUrl(tag: String): String = "https://github.com/zenskypj/Komorebi-IME/releases/tag/" + URLEncoder.encode(tag, "UTF-8").replace("+", "%20")
+    fun releaseUrl(tag: String): String = "https://github.com/onboard-dev/Kanakana/releases/tag/" + URLEncoder.encode(tag, "UTF-8").replace("+", "%20")
     fun checkAsync(context: Context, notify: Boolean, callback: (String?) -> Unit) {
         if (!checking.compareAndSet(false, true)) { main.post { callback("更新を確認中です") }; return }
         val app = context.applicationContext
@@ -90,7 +90,7 @@ internal object UpdateManager {
         try {
             conn.connectTimeout = 15_000; conn.readTimeout = 20_000
             conn.setRequestProperty("Accept", "application/vnd.github+json")
-            conn.setRequestProperty("User-Agent", "Komorebi-IME-Update-Check")
+            conn.setRequestProperty("User-Agent", "KanaKana-Update-Check")
             check(conn.responseCode == 200)
             val bytes = conn.inputStream.use { input ->
                 val out = java.io.ByteArrayOutputStream()
@@ -120,7 +120,7 @@ internal object UpdateManager {
         val pending = PendingIntent.getActivity(context, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
         val notification = NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(android.R.drawable.stat_sys_download_done)
-            .setContentTitle(if (stable) "Komorebi IME の正式版があります" else "Komorebi IME の更新があります")
+            .setContentTitle(if (stable) "KanaKana の正式版があります" else "KanaKana の更新があります")
             .setContentText("$tag を確認できます")
             .setAutoCancel(true).setContentIntent(pending).build()
         try {

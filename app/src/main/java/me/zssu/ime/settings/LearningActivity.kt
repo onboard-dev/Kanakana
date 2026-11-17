@@ -149,7 +149,7 @@ private fun LearningScreen() {
                     OutlinedButton(onClick = { performanceReport = InputPerformance.report(context) }) { Text("最新の状態を表示") }
                     OutlinedButton(onClick = {
                         exportText = InputPerformance.report(context)
-                        saveDiagnostic.launch("komorebi-diagnostics.txt")
+                        saveDiagnostic.launch("kanakana-diagnostics.txt")
                     }) { Text("診断をファイルに保存") }
                     OutlinedButton(onClick = {
                         InputPerformance.clear(context)
@@ -175,7 +175,7 @@ private fun LearningScreen() {
                     for (entry in pinned) OutlinedButton(onClick = { priority.unpin(entry.reading, entry.value); pinned = priority.entries() }) {
                         Text("${entry.reading} → ${entry.value}：優先解除")
                     }
-                    OutlinedButton(onClick = { confirmTtt = true }) { Text("zenzai-plus の TTT 学習をリセット") }
+                    OutlinedButton(onClick = { confirmTtt = true }) { Text("zenzai-plus の自動学習(TTT)をリセット") }
                 }
             }
             Card(shape = RoundedCornerShape(14.dp)) {
@@ -210,7 +210,7 @@ private fun LearningScreen() {
     }
     if (confirmTtt) AlertDialog(
         onDismissRequest = { confirmTtt = false },
-        title = { Text("TTT 学習をリセットしますか？") },
+        title = { Text("自動学習(TTT)をリセットしますか？") },
         text = { Text("zenzai-plus の学習結果を初期化します。モデルとユーザー辞書は残ります。") },
         confirmButton = { TextButton(onClick = {
             val prefs = context.getSharedPreferences(ImeSettings.NAME, 0)

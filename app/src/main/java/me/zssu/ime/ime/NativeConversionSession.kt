@@ -61,6 +61,13 @@ internal class NativeConversionSession(private val context: Context, private val
         return kana.state()
     }
 
+    fun sendKana(text: String, ascii: Char): MozcSession.State? {
+        if (usesMozc) return native().sendKana(text, ascii)
+        // Without Mozc there is no kana table, so there is no ゛/゜ composition: insert literally.
+        kana.insert(text)
+        return kana.state()
+    }
+
     fun sendSpecialKey(key: KeyEvent.SpecialKey, shift: Boolean = false): MozcSession.State? {
         if (usesMozc) return native().sendSpecialKey(key, shift)
         return when (key) {
