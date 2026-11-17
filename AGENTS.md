@@ -64,6 +64,13 @@
 
 - 2026-11-05にPCの占有が指摘された。通常のAPK作成は`--no-daemon --max-workers=1`
   と`-Dorg.gradle.jvmargs=-Xmx2g -Pkotlin.compiler.execution.strategy=in-process`を使う。
+- 例外: 2026-11-17の利用者指定により、**リリース時の全ゲート（「リリース前」の手順3・4）は
+  メモリ・並列数を制限せず、時間短縮の設定で実行する**。このPCは常時稼働で、メモリ64GB
+  （うちRAMディスクが10GBで、使えるのは約54GB）、論理CPU16。`--no-daemon`、`--max-workers=1`、
+  `-Xmx2g`、`kotlin.compiler.execution.strategy=in-process`は付けず、`gradle.properties`の
+  並列・キャッシュ設定（`org.gradle.parallel`、`org.gradle.caching`）を使い、
+  `-Dorg.gradle.jvmargs=-Xmx8g`程度に増やしてよい。全ゲートの実測は、制限付きで1時間18分だった。
+  この例外は全ゲートだけに適用し、普段の確認用ビルドや辞書・nativeの生成には適用しない。
 - 不要な大規模辞書・nativeの再生成をしない。必要な生成も同時実行を増やさない。
 - 作業が終わった隔離checkoutのBazel常駐は`bazelisk shutdown`で解放する。
   他アプリ・データベースや、別作業中のプロセスは停止しない。
