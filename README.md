@@ -25,7 +25,7 @@ Komorebi の機能(フリック・QWERTY、Mozc 変換、Karukan、ユーザー�
 | キーボード | 配列 |
 |---|---|
 | [Omikamo キーボード bluetooth 折り畳み式 ワイヤレス JIS標準日本語配列](https://www.amazon.co.jp/dp/B0CWKWXP37) | JIS |
-| SANWA SLB-BT32BK | JIS |
+| [SANWA SKB-BT32BK](https://www.sanwa.co.jp/product/syohin?code=SKB-BT32BK) | JIS |
 
 上記以外の端末・キーボードでは、動作を確認していません。端末ごとに、確認できた機能の範囲は異なります。
 
