@@ -61,6 +61,9 @@ class InputSettingsActivity : ComponentActivity() {
         setContent { ZinnaTheme { InputSettingsScreen(keyTick.intValue) } }
     }
 
+    // Lint flags ComponentActivity.dispatchKeyEvent as restricted API, but it is the public
+    // Activity method being overridden; every physical key press passes through it.
+    @android.annotation.SuppressLint("RestrictedApi")
     override fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean {
         if (event.action == android.view.KeyEvent.ACTION_DOWN) {
             KeyboardLayoutInfo.noteKey(this, event)

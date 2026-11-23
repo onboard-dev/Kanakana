@@ -63,6 +63,7 @@
     {
       group: "リリースノート",
       items: [
+        ["releases/v1.0.1", "1.0.1", "JIS キーボードの英数入力と入力モード表示", "docs/releases/v1.0.1.md", "release 1.0.1 jis 記号 入力モード"],
         ["releases/v1.0.0", "1.0.0", "KanaKana 最初の公開版", "docs/releases/v1.0.0.md", "release 1.0.0 kanakana jis かな入力"],
         ["releases/v0.3.0-rc.68-dev", "rc.68-dev", "翻訳・手書き・入力補助", "docs/releases/v0.3.0-rc.68-dev.md", "release rc68 翻訳 手書き きせかえ"],
         ["releases/v0.3.0-rc.67-dev", "rc.67-dev", "Meets Beam の受信と再試行を修正", "docs/releases/v0.3.0-rc.67-dev.md", "release rc67 Meets Beam NFC Wi-Fi Direct"],
