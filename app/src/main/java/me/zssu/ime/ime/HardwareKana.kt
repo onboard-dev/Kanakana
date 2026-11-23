@@ -42,6 +42,12 @@ internal object HardwareKana {
         data object KanaOn : Command
         data object KanaOff : Command
 
+        /**
+         * A symbol typed with kana input off, taken from the JIS legend because Android's own map for
+         * the keyboard is US (empty [text] swallows the key: JIS Shift+0 prints nothing).
+         */
+        data class Symbol(val text: String) : Command
+
         /** Not ours: let the editor receive the key untouched. */
         data object Pass : Command
     }
@@ -78,6 +84,20 @@ internal object HardwareKana {
         key(52, '.', "る", "。"); key(53, '/', "め", "・"); key(89, '\\', "ろ") // the ろ key
     }
 
+    // The keys whose JIS legend differs from the US map Android assigns to a keyboard it does not
+    // know, as (plain, shifted) by scan code. null leaves that state to the editor, which is right
+    // wherever the two layouts agree. ¥ and ろ have no character at all in Android's generic map.
+    private val jisSymbols: Map<Int, Pair<String?, String?>> = mapOf(
+        3 to (null to "\""), 7 to (null to "&"), 8 to (null to "'"), 9 to (null to "("),
+        10 to (null to ")"), 11 to (null to ""), 12 to (null to "="), 13 to ("^" to "~"),
+        26 to ("@" to "`"), 27 to ("[" to "{"), 39 to (null to "+"), 40 to (":" to "*"),
+        43 to ("]" to "}"), 89 to ("\\" to "_"), 124 to ("¥" to "|"),
+    )
+
+    /** The symbol a JIS keyboard prints on this key, or null when the editor should handle it. */
+    fun jisSymbol(scanCode: Int, shift: Boolean): String? =
+        jisSymbols[scanCode]?.let { if (shift) it.second else it.first }
+
     /** The kana for a scan code, or null when that key has no kana printed on it. */
     fun lookup(scanCode: Int, shift: Boolean): Command.Kana? =
         table[scanCode]?.let { Command.Kana(if (shift) it.shifted else it.plain, it.ascii) }
@@ -85,8 +105,8 @@ internal object HardwareKana {
     /**
      * Decides what a key press does.
      *
-     * With kana input off, only the mode keys are ours and every other key reaches the editor as
-     * an ordinary US-style key. With it on, kana keys and Space are always ours, but the editing
+     * With kana input off, only the mode keys are ours (plus the JIS symbols when [jisSymbols] is
+     * on) and every other key reaches the editor as an ordinary US-style key. With it on, kana keys and Space are always ours, but the editing
      * keys (Enter, Backspace, arrows, Escape) are taken only while something is being composed so
      * that they keep their normal meaning in the editor otherwise.
      */
@@ -96,6 +116,7 @@ internal object HardwareKana {
         shift: Boolean,
         kanaOn: Boolean,
         composing: Boolean,
+        jisSymbols: Boolean = false,
     ): Command {
         // A JIS keyboard's 半角/全角 key reports KEY_GRAVE (scan 41) on many Bluetooth boards, not
         // KEY_ZENKAKUHANKAKU (85), so Android hands the IME KEYCODE_GRAVE. JIS has no backquote key,
@@ -106,7 +127,10 @@ internal object HardwareKana {
             KeyEvent.KEYCODE_KATAKANA_HIRAGANA -> return Command.KanaOn
             KeyEvent.KEYCODE_EISU, KeyEvent.KEYCODE_MUHENKAN -> return Command.KanaOff
         }
-        if (!kanaOn) return Command.Pass
+        if (!kanaOn) {
+            if (jisSymbols) jisSymbol(scanCode, shift)?.let { return Command.Symbol(it) }
+            return Command.Pass
+        }
         when (keyCode) {
             KeyEvent.KEYCODE_HENKAN -> return if (composing) Command.Convert else Command.Pass
             KeyEvent.KEYCODE_SPACE -> return Command.Space

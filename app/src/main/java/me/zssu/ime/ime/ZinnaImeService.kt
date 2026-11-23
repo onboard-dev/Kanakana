@@ -571,6 +571,17 @@ class ZinnaImeService : InputMethodService() {
         val candidateRow = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             addView(menuButton, LinearLayout.LayoutParams(menuButtonWidth, stripHeight))
+            // Like a PC's IME: あ while typing kana, A for direct input. Tap to switch. Only offered
+            // while a physical keyboard is attached, which is when the mode is switched by key.
+            addView(android.widget.TextView(this@ZinnaImeService).apply {
+                textSize = 17f
+                typeface = android.graphics.Typeface.DEFAULT_BOLD
+                gravity = Gravity.CENTER
+                isFocusable = false
+                visibility = View.GONE
+                setOnClickListener { setHardwareKana(!hardwareKanaOn) }
+                modeIndicator = this
+            }, LinearLayout.LayoutParams(menuButtonWidth, stripHeight))
             addView(candidates, LinearLayout.LayoutParams(0, stripHeight, 1f))
             // Only offered while a physical keyboard is attached: brings the on-screen keys back.
             addView(android.widget.TextView(this@ZinnaImeService).apply {
@@ -1671,6 +1682,7 @@ class ZinnaImeService : InputMethodService() {
         handwritingScope.coroutineContext[kotlinx.coroutines.Job]?.cancel()
         toolMenuButton = null
         keyboardToggleButton = null
+        modeIndicator = null
         if (voicePanelActive) closeVoicePanel()
         voicePending = null
         TextToolRequest.pending = null
@@ -1739,9 +1751,33 @@ class ZinnaImeService : InputMethodService() {
     private fun applyHardwareKeyboardLayout() {
         keyboardView?.visibility =
             if (candidatePanelExpanded || compactForHardwareKeyboard()) View.GONE else View.VISIBLE
-        keyboardToggleButton?.visibility =
-            if (!candidatePanelExpanded && ::settings.isInitialized && settings.hardwareKanaEnabled &&
-                hardwareKeyboardAttached()) View.VISIBLE else View.GONE
+        val offered = !candidatePanelExpanded && ::settings.isInitialized && settings.hardwareKanaEnabled &&
+            hardwareKeyboardAttached()
+        keyboardToggleButton?.visibility = if (offered) View.VISIBLE else View.GONE
+        modeIndicator?.visibility = if (offered) View.VISIBLE else View.GONE
+        refreshModeIndicator()
+    }
+
+    private var modeIndicator: android.widget.TextView? = null
+
+    /** Shows あ on the kana colour or A on the direct-input colour. */
+    private fun refreshModeIndicator() {
+        val view = modeIndicator ?: return
+        if (!::settings.isInitialized) return
+        // Passwords, URLs and terminals always take plain keys, whatever the mode key was set to.
+        val kana = hardwareKanaOn && fieldPolicy.plane == InputFieldPolicy.Plane.USER_DEFAULT && !fieldPolicy.rawKeyEvents
+        val color = me.zssu.ime.settings.ModeIndicatorColors.argb(
+            if (kana) settings.modeIndicatorKanaColor else settings.modeIndicatorDirectColor,
+        )
+        view.text = if (kana) "あ" else "A"
+        view.setTextColor(me.zssu.ime.settings.ModeIndicatorColors.textColorFor(color))
+        view.contentDescription = if (kana) "かな入力(タップで英字入力へ)" else "英字入力(タップでかな入力へ)"
+        view.background = android.graphics.drawable.GradientDrawable().apply {
+            setColor(color)
+            cornerRadius = 8 * resources.displayMetrics.density
+        }
+        val inset = (5 * resources.displayMetrics.density).toInt()
+        view.setPadding(0, inset, 0, inset)
     }
 
     /** Kana input vs. direct (US-style) input on the physical keyboard. 半角/全角 flips it. */
@@ -1756,6 +1792,7 @@ class ZinnaImeService : InputMethodService() {
         if (::settings.isInitialized && settings.hardwareKanaEnabled) true else super.onEvaluateInputViewShown()
 
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
+        me.zssu.ime.settings.KeyboardLayoutInfo.noteKey(this, event)
         if (handlePhysicalKey(keyCode, event)) {
             hardwareConsumedKeys.add(keyCode)
             return true
@@ -1786,9 +1823,13 @@ class ZinnaImeService : InputMethodService() {
             shift = event.isShiftPressed,
             kanaOn = hardwareKanaOn,
             composing = isComposing,
+            jisSymbols = settings.hardwareJisSymbols,
         )
         when (command) {
             HardwareKana.Command.Pass -> return false
+            is HardwareKana.Command.Symbol -> {
+                if (command.text.isNotEmpty()) enqueueInput(repeated = event.repeatCount > 0) { handleSymbol(command.text) }
+            }
             HardwareKana.Command.ToggleKana -> setHardwareKana(!hardwareKanaOn)
             HardwareKana.Command.KanaOn -> setHardwareKana(true)
             HardwareKana.Command.KanaOff -> setHardwareKana(false)
@@ -1815,6 +1856,7 @@ class ZinnaImeService : InputMethodService() {
     private fun setHardwareKana(on: Boolean) {
         if (hardwareKanaOn == on) return
         hardwareKanaOn = on
+        refreshModeIndicator()
         // Whatever was being typed belongs to the mode that is ending.
         if (!on && isComposing) enqueueInput { submitCurrentComposition() }
     }

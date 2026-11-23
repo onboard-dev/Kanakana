@@ -47,6 +47,23 @@ class ImeSettings(context: Context) {
     var hardwareKanaEnabled: Boolean
         get() = prefs.getBoolean("hardware_kana_enabled", true)
         set(value) { prefs.edit().putBoolean("hardware_kana_enabled", value).apply(); bumpRevision() }
+    /**
+     * With kana input off, type the symbols printed on a JIS keyboard (Shift+2 is ", ¥ and ろ work)
+     * even when Android gives the keyboard a US map. Turn off for a US keyboard.
+     */
+    var hardwareJisSymbols: Boolean
+        get() = prefs.getBoolean("hardware_jis_symbols", true)
+        set(value) { prefs.edit().putBoolean("hardware_jis_symbols", value).apply(); bumpRevision() }
+    /** Index into [ModeIndicatorColors.palette] for the indicator while typing kana. */
+    var modeIndicatorKanaColor: Int
+        get() = prefs.getInt("mode_indicator_kana_color", ModeIndicatorColors.DEFAULT_KANA_INDEX)
+            .coerceIn(0, ModeIndicatorColors.palette.lastIndex)
+        set(value) { prefs.edit().putInt("mode_indicator_kana_color", value).apply(); bumpRevision() }
+    /** Index into [ModeIndicatorColors.palette] for the indicator while typing direct input. */
+    var modeIndicatorDirectColor: Int
+        get() = prefs.getInt("mode_indicator_direct_color", ModeIndicatorColors.DEFAULT_DIRECT_INDEX)
+            .coerceIn(0, ModeIndicatorColors.palette.lastIndex)
+        set(value) { prefs.edit().putInt("mode_indicator_direct_color", value).apply(); bumpRevision() }
     var zenzaiPlusEnabled: Boolean
         get() = prefs.getBoolean("zenzai_plus_enabled", false)
         set(value) { prefs.edit().putBoolean("zenzai_plus_enabled", value).apply(); bumpRevision() }

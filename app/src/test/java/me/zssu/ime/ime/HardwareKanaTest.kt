@@ -64,6 +64,47 @@ class HardwareKanaTest {
         assertEquals(Command.ToggleKana, classify(KeyEvent.KEYCODE_UNKNOWN, scan = 85))
     }
 
+    private fun direct(scan: Int, shift: Boolean = false, jis: Boolean = true) =
+        HardwareKana.classify(KeyEvent.KEYCODE_UNKNOWN, scan, shift, kanaOn = false, composing = false, jisSymbols = jis)
+
+    @Test fun jisSymbolsFillInTheKeysAUsMapGetsWrong() {
+        // Found on a tablet that treats a JIS keyboard as US: the yen and ro keys typed nothing,
+        // and Shift+2 gave @ and the colon key gave an apostrophe.
+        assertEquals(Command.Symbol("¥"), direct(124))
+        assertEquals(Command.Symbol("|"), direct(124, shift = true))
+        assertEquals(Command.Symbol("\\"), direct(89))
+        assertEquals(Command.Symbol("_"), direct(89, shift = true))
+        assertEquals(Command.Symbol("\""), direct(3, shift = true))
+        assertEquals(Command.Symbol(":"), direct(40))
+        assertEquals(Command.Symbol("*"), direct(40, shift = true))
+        assertEquals(Command.Symbol("@"), direct(26))
+        assertEquals(Command.Symbol("="), direct(12, shift = true))
+        assertEquals(Command.Symbol("+"), direct(39, shift = true))
+    }
+
+    @Test fun shiftZeroPrintsNothingOnJis() {
+        assertEquals(Command.Symbol(""), direct(11, shift = true))
+        assertEquals(Command.Pass, direct(11))
+    }
+
+    @Test fun keysThatAgreeWithUsStayWithTheEditor() {
+        assertEquals(Command.Pass, direct(2)) // 1
+        assertEquals(Command.Pass, direct(2, shift = true)) // !
+        assertEquals(Command.Pass, direct(39)) // ;
+        assertEquals(Command.Pass, direct(20)) // t
+        assertEquals(Command.Pass, direct(53, shift = true)) // ?
+    }
+
+    @Test fun jisSymbolsCanBeTurnedOffForAUsKeyboard() {
+        assertEquals(Command.Pass, direct(124, jis = false))
+        assertEquals(Command.Pass, direct(3, shift = true, jis = false))
+    }
+
+    @Test fun kanaModeIgnoresJisSymbolsAndKeepsItsKana() {
+        val kanaYen = HardwareKana.classify(KeyEvent.KEYCODE_UNKNOWN, 124, false, kanaOn = true, composing = false, jisSymbols = true)
+        assertEquals(Command.Kana("ー", '\\'), kanaYen)
+    }
+
     @Test fun directModePassesEverythingElse() {
         assertEquals(Command.Pass, classify(KeyEvent.KEYCODE_T, scan = 20, on = false))
         assertEquals(Command.Pass, classify(KeyEvent.KEYCODE_SPACE, on = false, composing = true))
