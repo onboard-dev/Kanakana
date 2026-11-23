@@ -12,15 +12,22 @@ Komorebi の機能(フリック・QWERTY、Mozc 変換、Karukan、ユーザー�
 
 ## 動作確認した環境
 
-| 項目 | 内容 |
-|---|---|
-| 実機 | Galaxy S23(ドコモ版、型番 SC-51D) |
-| SoC | Qualcomm SM8550(Snapdragon 8 Gen 2 for Galaxy)、8 コア |
-| メモリ | 8 GB |
-| OS | Android 16(API 36) |
-| Bluetooth キーボード | [Omikamo キーボード bluetooth 折り畳み式 ワイヤレス JIS標準日本語配列](https://www.amazon.co.jp/dp/B0CWKWXP37) |
+### 端末
 
-上記以外の端末・キーボードでは、動作を確認していません。
+| 端末 | SoC | メモリ | OS |
+|---|---|---|---|
+| Galaxy S23(ドコモ版、型番 SC-51D) | Qualcomm SM8550(Snapdragon 8 Gen 2 for Galaxy)、8 コア | 8 GB | Android 16(API 36) |
+| TECLAST T70(タブレット) | MediaTek MT8781 | — | Android 14(API 34) |
+| ALLDOCUBE iPlay60 mini(タブレット) | Unisoc T606 | — | Android 15(API 35) |
+
+### Bluetooth キーボード
+
+| キーボード | 配列 |
+|---|---|
+| [Omikamo キーボード bluetooth 折り畳み式 ワイヤレス JIS標準日本語配列](https://www.amazon.co.jp/dp/B0CWKWXP37) | JIS |
+| SANWA SLB-BT32BK | JIS |
+
+上記以外の端末・キーボードでは、動作を確認していません。端末ごとに、確認できた機能の範囲は異なります。
 
 ## 開発に使用している AI
 
