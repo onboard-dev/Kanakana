@@ -17,8 +17,8 @@ Komorebi の機能(フリック・QWERTY、Mozc 変換、Karukan、ユーザー�
 | 端末 | SoC | メモリ | OS |
 |---|---|---|---|
 | Galaxy S23(ドコモ版、型番 SC-51D) | Qualcomm SM8550(Snapdragon 8 Gen 2 for Galaxy)、8 コア | 8 GB | Android 16(API 36) |
-| TECLAST T70(タブレット) | MediaTek MT8781 | — | Android 14(API 34) |
-| ALLDOCUBE iPlay60 mini(タブレット) | Unisoc T606 | — | Android 15(API 35) |
+| TECLAST T70(タブレット) | MediaTek MT8781 | 8 GB | Android 14(API 34) |
+| ALLDOCUBE iPlay60 mini(タブレット) | Unisoc T606 | 4 GB | Android 15(API 35) |
 
 ### Bluetooth キーボード
 
