@@ -26,6 +26,25 @@ class FlickResolverTest {
     private val threshold = 24f
 
     @Test
+    fun `practice corner turns its diagonal into a down flick`() {
+        val left = FlickResolver.PracticeCorner.LEFT_DOWN
+        val right = FlickResolver.PracticeCorner.RIGHT_DOWN
+        // Lower-left drift: LEFT without the mode, DOWN with the left corner.
+        assertEquals(FlickDirection.LEFT, FlickResolver.resolve(fullKey, -50f, 40f, threshold))
+        assertEquals(FlickDirection.DOWN, FlickResolver.resolve(fullKey, -50f, 40f, threshold, left))
+        assertEquals(FlickDirection.DOWN, FlickResolver.resolve(fullKey, 50f, 40f, threshold, right))
+        // The other corner's diagonal is untouched.
+        assertEquals(FlickDirection.RIGHT, FlickResolver.resolve(fullKey, 50f, 40f, threshold, left))
+        assertEquals(FlickDirection.LEFT, FlickResolver.resolve(fullKey, -50f, 40f, threshold, right))
+        // Upward diagonals are untouched.
+        assertEquals(FlickDirection.LEFT, FlickResolver.resolve(fullKey, -50f, -40f, threshold, left))
+        // A mostly horizontal flick stays LEFT even in the practice corner.
+        assertEquals(FlickDirection.LEFT, FlickResolver.resolve(fullKey, -60f, 20f, threshold, left))
+        // No down output: the diagonal falls back to the usual axis rule.
+        assertEquals(FlickDirection.LEFT, FlickResolver.resolve(horizontalOnlyKey, -50f, 40f, threshold, left))
+    }
+
+    @Test
     fun `movement below threshold stays on center`() {
         assertEquals(FlickDirection.CENTER, FlickResolver.resolve(fullKey, 20f, 0f, threshold))
         assertEquals(FlickDirection.CENTER, FlickResolver.resolve(fullKey, 0f, -23.9f, threshold))

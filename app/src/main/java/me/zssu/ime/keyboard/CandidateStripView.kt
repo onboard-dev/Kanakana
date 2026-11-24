@@ -36,7 +36,7 @@ import me.zssu.ime.theme.KeyboardTheme
 @SuppressLint("ViewConstructor")
 class CandidateStripView(context: Context) : HorizontalScrollView(context) {
 
-    enum class ToolAction { CLIPBOARD, EMOJI, ONE_HAND_CYCLE, PROOFREAD, SETTINGS, SNIPPETS, AI_STYLE, MEETS_BEAM, EDIT, RECONVERT, HEIGHT, INPUT_HELP, VOICE, TRANSLATE, HANDWRITING, IMAGE_TEXT }
+    enum class ToolAction { CLIPBOARD, EMOJI, ONE_HAND_CYCLE, PROOFREAD, SHRINK_CYCLE, SETTINGS, SNIPPETS, AI_STYLE, MEETS_BEAM, EDIT, RECONVERT, HEIGHT, INPUT_HELP, VOICE, TRANSLATE, HANDWRITING, IMAGE_TEXT }
     enum class OneHandDisplayMode { FULL, LEFT, RIGHT }
     enum class EmojiPage { RECENT, EMOJI, KAOMOJI, FAVORITE }
 
@@ -500,13 +500,18 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
 
     fun clear() = setCandidates(emptyList(), -1)
 
+    /** How many tools the strip shows next to the menu button; the rest are in the tool menu. */
+    private val MAX_STRIP_TOOLS = 6
+
     private val toolPrefs get() = context.getSharedPreferences("keyboard_toolbar", Context.MODE_PRIVATE)
     private fun toolOrder(): List<ToolAction> {
         val saved = toolPrefs.getString("order", "").orEmpty().split(",")
             .mapNotNull { name -> ToolAction.entries.firstOrNull { it.name == name } }.distinct()
-        return saved + ToolAction.entries.filterNot { it in saved }
+        return placeNewTools(saved)
     }
     private fun toolLabel(action: ToolAction): String = when (action) {
+        ToolAction.SHRINK_CYCLE -> "縮小表示(100→60→50→40→30%)"
+
         ToolAction.AI_STYLE -> "文体補正"
         ToolAction.CLIPBOARD -> "クリップボード"
         ToolAction.EMOJI -> "絵文字"
@@ -525,6 +530,8 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         ToolAction.IMAGE_TEXT -> "画像から文字"
     }
     private fun toolIcon(action: ToolAction): Int = when (action) {
+        ToolAction.SHRINK_CYCLE -> R.drawable.ic_shrink_half
+
         ToolAction.AI_STYLE -> R.drawable.ic_ai_style
         ToolAction.CLIPBOARD -> R.drawable.ic_material_content_paste
         ToolAction.EMOJI -> R.drawable.ic_material_face
@@ -552,7 +559,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         val visibleTools = toolOrder().filter {
             toolPrefs.getBoolean("visible_" + it.name, true) &&
                 (it != ToolAction.MEETS_BEAM || me.zssu.ime.settings.MeetsBeamSettings.enabled(context))
-        }.take(5)
+        }.take(MAX_STRIP_TOOLS)
         val next = ToolbarState(visibleTools, oneHandMode, theme)
         if (toolbarState == next) return
         focusedChild = -1
@@ -1090,4 +1097,19 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
             container.layoutParams = LayoutParams(width, LayoutParams.MATCH_PARENT)
         }
     }
+}
+
+/**
+ * A saved tool order written before a tool existed does not list it. Tools added later go to the
+ * end, except [CandidateStripView.ToolAction.SHRINK_CYCLE], which belongs right after the AI
+ * proofreading tool so it shows on the strip for people who already customised the order.
+ */
+internal fun placeNewTools(saved: List<CandidateStripView.ToolAction>): List<CandidateStripView.ToolAction> {
+    val result = saved.toMutableList()
+    if (CandidateStripView.ToolAction.SHRINK_CYCLE !in result) {
+        val after = result.indexOf(CandidateStripView.ToolAction.PROOFREAD)
+        if (after >= 0) result.add(after + 1, CandidateStripView.ToolAction.SHRINK_CYCLE)
+        else result.add(CandidateStripView.ToolAction.SHRINK_CYCLE)
+    }
+    return result + CandidateStripView.ToolAction.entries.filterNot { it in result }
 }

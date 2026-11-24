@@ -36,6 +36,7 @@ import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -55,16 +56,29 @@ import me.zssu.ime.theme.ZinnaTheme
  * selected model is ready.
  */
 class ProofreadModelActivity : ComponentActivity() {
+    /** Bumped on every resume so the screen re-reads the engine chosen on the connection screen. */
+    private var resumeTick by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { ZinnaTheme { ProofreadModelScreen() } }
+        setContent { ZinnaTheme { ProofreadModelScreen(resumeTick) } }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        resumeTick++
     }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun ProofreadModelScreen() {
+private fun ProofreadModelScreen(resumeTick: Int) {
     val context = LocalContext.current
+    val remoteSettings = remember { ProofreadRemoteSettings(context) }
+    var engine by remember { mutableStateOf(remoteSettings.engine) }
+    // The connection screen can change the engine, so re-read it when coming back.
+    androidx.compose.runtime.LaunchedEffect(resumeTick) { engine = remoteSettings.engine }
+    val local = engine == ProofreadEngine.LOCAL
     val specs = ProofreadModelStore.specs
     var selectedId by remember { mutableStateOf(ProofreadModelStore.selectedId(context)) }
     val states = remember { mutableStateMapOf<String, ProofreadModelStore.State>() }
@@ -110,7 +124,7 @@ private fun ProofreadModelScreen() {
                     }
                     Text(
                         "選択した文章、またはカーソル直前の600文字を、ダウンロードしたモデルで校正します。" +
-                            "校正対象の文章と結果は、既定では端末内で処理し、ネットワークには送信しません(下の「校正の接続先」で OpenRouter / Ollama を選んだ場合だけ送信します)。",
+                            "校正対象の文章と結果は、既定では端末内で処理し、ネットワークには送信しません(下の「クラウド(OpenRouter)またはローカル(Ollama)」を選んだ場合だけ送信します)。",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     Text(
@@ -128,8 +142,46 @@ private fun ProofreadModelScreen() {
                 }
             }
 
-            OutlinedButton(onClick = { context.startActivity(android.content.Intent(context, ProofreadRemoteActivity::class.java)) }) {
-                Text("校正の接続先(OpenRouter / Ollama)")
+            Card(shape = RoundedCornerShape(14.dp), modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    val config = remember(engine, resumeTick) { remoteSettings.snapshot() }
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = !local,
+                            onClick = { engine = remoteSettings.lastRemoteEngine; remoteSettings.engine = engine },
+                        )
+                        Column(Modifier.weight(1f)) {
+                            Text(
+                                "クラウド(OpenRouter)またはローカル(Ollama)",
+                                style = MaterialTheme.typography.bodyLarge,
+                                fontWeight = FontWeight.Medium,
+                            )
+                            Text(
+                                if (local) "選ぶと ${remoteSettings.lastRemoteEngine.label} で校正します" else "現在: ${config.describe()}",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (local) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.primary,
+                            )
+                        }
+                    }
+                    Text(
+                        "校正する文章と指示文を、OpenRouter または自分で動かしている Ollama のサーバーへ送信します。" +
+                            "モデルのダウンロードは不要です。",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    if (!local && !config.ready()) {
+                        Text(
+                            "接続先の設定が足りません。「設定」で入力してください。",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error,
+                        )
+                    }
+                    OutlinedButton(
+                        onClick = { context.startActivity(android.content.Intent(context, ProofreadRemoteActivity::class.java)) },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text("設定")
+                    }
+                }
             }
 
             specs.forEachIndexed { index, spec ->
@@ -138,10 +190,12 @@ private fun ProofreadModelScreen() {
                     Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             RadioButton(
-                                selected = spec.id == selectedId,
+                                selected = local && spec.id == selectedId,
                                 onClick = {
                                     selectedId = spec.id
                                     ProofreadModelStore.select(context, spec)
+                                    engine = ProofreadEngine.LOCAL
+                                    remoteSettings.engine = ProofreadEngine.LOCAL
                                 },
                             )
                             Column(Modifier.weight(1f)) {
@@ -164,6 +218,8 @@ private fun ProofreadModelScreen() {
                                     onClick = {
                                         ProofreadModelStore.select(context, spec)
                                         selectedId = spec.id
+                                        engine = ProofreadEngine.LOCAL
+                                        remoteSettings.engine = ProofreadEngine.LOCAL
                                         ProofreadModelStore.install(context, spec)
                                     },
                                     modifier = Modifier.fillMaxWidth(),
@@ -184,13 +240,13 @@ private fun ProofreadModelScreen() {
                                 }
                             }
                             ProofreadModelStore.State.Ready -> {
-                                Text("このモデルで校正します。", style = MaterialTheme.typography.bodySmall)
+                                Text(if (local) "このモデルで校正します。" else "選ぶと、このモデルで校正します。", style = MaterialTheme.typography.bodySmall)
                                 OutlinedButton(
                                     onClick = { ProofreadModelStore.delete(context, spec) },
-                                    enabled = spec.id != selectedId,
+                                    enabled = !(local && spec.id == selectedId),
                                     modifier = Modifier.fillMaxWidth(),
                                 ) {
-                                    Text(if (spec.id == selectedId) "選択中のモデルは削除できません" else "モデルを削除")
+                                    Text(if (local && spec.id == selectedId) "選択中のモデルは削除できません" else "モデルを削除")
                                 }
                             }
                             is ProofreadModelStore.State.Error -> {
@@ -199,6 +255,8 @@ private fun ProofreadModelScreen() {
                                     onClick = {
                                         ProofreadModelStore.select(context, spec)
                                         selectedId = spec.id
+                                        engine = ProofreadEngine.LOCAL
+                                        remoteSettings.engine = ProofreadEngine.LOCAL
                                         ProofreadModelStore.install(context, spec)
                                     },
                                     modifier = Modifier.fillMaxWidth(),

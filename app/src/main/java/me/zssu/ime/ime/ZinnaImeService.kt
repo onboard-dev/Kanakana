@@ -123,6 +123,7 @@ class ZinnaImeService : InputMethodService() {
     private var keyboardView: FlickKeyboardView? = null
     private var panelView: KeyboardPanelView? = null
     private var contentLayout: LinearLayout? = null
+    private var contentScaleBox: me.zssu.ime.keyboard.ScaleBox? = null
     private var candidateView: CandidateStripView? = null
     private var meaningPopup: MeaningPopupView? = null
     private var layout: KeyboardLayout? = null
@@ -533,6 +534,7 @@ class ZinnaImeService : InputMethodService() {
             layout = loaded?.let(::adaptLayoutForStyle)
             guideOverflowTop = stripHeight.toFloat()
             guideStyle = settings.flickGuideStyle
+            practiceCorner = settings.flickPracticeCorner
             listener = FlickKeyboardView.OnKeyOutputListener(::onKeyOutput)
         }
 
@@ -639,10 +641,17 @@ class ZinnaImeService : InputMethodService() {
                 LinearLayout.LayoutParams.WRAP_CONTENT,
             ),
         )
-        panel.addView(
+        // The scale box shows everything in the panel at the chosen shrink level (100% normally).
+        val scaleBox = me.zssu.ime.keyboard.ScaleBox(this)
+        scaleBox.addView(
             content,
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.WRAP_CONTENT),
+        )
+        panel.addView(
+            scaleBox,
             LinearLayout.LayoutParams(contentWidth, LinearLayout.LayoutParams.WRAP_CONTENT),
         )
+        contentScaleBox = scaleBox
 
         root.addView(
             popupView,
@@ -658,6 +667,7 @@ class ZinnaImeService : InputMethodService() {
         keyboard.onRepeatStopped = inputQueue::cancelRepeats
         keyboard.onTrackpadMove = { delta -> enqueueInput(repeated = keyboard.isRepeatingOutput) { handleCursorMove(delta, adjustSegment = false, forceClauseMove = true)  } }
         keyboardView = keyboard
+        applyUiScale()
         candidatePanelExpanded = false
         applyHardwareKeyboardLayout()
         meaningPopup = popupView
@@ -833,6 +843,7 @@ class ZinnaImeService : InputMethodService() {
             )
             CandidateStripView.ToolAction.HEIGHT -> showHeightControl()
             CandidateStripView.ToolAction.ONE_HAND_CYCLE -> cycleOneHandMode()
+            CandidateStripView.ToolAction.SHRINK_CYCLE -> cycleUiScale()
             CandidateStripView.ToolAction.SETTINGS -> startActivity(
                 Intent(this, SettingsActivity::class.java)
                     .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
@@ -1254,6 +1265,67 @@ class ZinnaImeService : InputMethodService() {
      * Updates the existing view's gravity and width in place instead of rebuilding, so a live
      * composition survives the switch.
      */
+    /** Each press goes to the next size (100 -> 60 -> 50 -> 40 -> 30% -> 100), in place so typing is not interrupted. */
+    private fun cycleUiScale() {
+        val next = me.zssu.ime.keyboard.UiScaleLevels.next(settings.uiShrinkLevel)
+        settings.uiShrinkLevel = next
+        applyUiScale()
+        Toast.makeText(this, "表示サイズ ${me.zssu.ime.keyboard.UiScaleLevels.percent(next)}%", Toast.LENGTH_SHORT).show()
+    }
+
+    /**
+     * Applies the shrink level to the live views: the whole panel (candidate row, tools and keys) is
+     * scaled by [me.zssu.ime.keyboard.ScaleBox], and while shrunk the panel is only as wide as its
+     * content and sits on the side chosen by the one-hand mode, so the rest of the window is empty.
+     */
+    private fun applyUiScale() {
+        val box = contentScaleBox ?: return
+        val panel = panelView ?: return
+        val scale = me.zssu.ime.keyboard.UiScaleLevels.scale(settings.uiShrinkLevel)
+        val mode = effectiveOneHandMode()
+        val screenWidth = resources.displayMetrics.widthPixels
+        val logicalWidth = if (mode == ImeSettings.OneHandMode.OFF) {
+            (screenWidth - panel.paddingLeft - panel.paddingRight).coerceAtLeast(1)
+        } else {
+            (screenWidth * settings.oneHandWidth).toInt()
+        }
+        box.logicalWidth = logicalWidth
+        box.scale = scale
+        (box.layoutParams as? LinearLayout.LayoutParams)?.let {
+            it.width = when {
+                scale < 1f -> LinearLayout.LayoutParams.WRAP_CONTENT
+                mode == ImeSettings.OneHandMode.OFF -> LinearLayout.LayoutParams.MATCH_PARENT
+                else -> logicalWidth
+            }
+            box.layoutParams = it
+        }
+        val horizontal = when (mode) {
+            ImeSettings.OneHandMode.LEFT -> Gravity.START
+            ImeSettings.OneHandMode.RIGHT -> Gravity.END
+            ImeSettings.OneHandMode.OFF -> Gravity.CENTER_HORIZONTAL
+        }
+        panel.layoutParams = FrameLayout.LayoutParams(
+            if (scale < 1f) FrameLayout.LayoutParams.WRAP_CONTENT else FrameLayout.LayoutParams.MATCH_PARENT,
+            FrameLayout.LayoutParams.MATCH_PARENT,
+            horizontal or Gravity.TOP,
+        )
+        keyboardView?.uiScale = scale
+    }
+
+    /**
+     * While shrunk, only the shrunken panel takes touches; the empty area beside it passes them to
+     * the app behind. Without this the transparent part of the window would still swallow taps.
+     */
+    override fun onComputeInsets(outInsets: InputMethodService.Insets) {
+        super.onComputeInsets(outInsets)
+        val panel = panelView ?: return
+        if (me.zssu.ime.keyboard.UiScaleLevels.scale(settings.uiShrinkLevel) >= 1f || !panel.isShown) return
+        val location = IntArray(2)
+        panel.getLocationInWindow(location)
+        outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION
+        outInsets.touchableRegion.set(location[0], location[1], location[0] + panel.width, location[1] + panel.height)
+    }
+
     private fun cycleOneHandMode() {
         val next = when (effectiveOneHandMode()) {
             ImeSettings.OneHandMode.OFF -> ImeSettings.OneHandMode.LEFT
@@ -1280,15 +1352,7 @@ class ZinnaImeService : InputMethodService() {
         }
         content.gravity = gravity
         panel.gravity = gravity
-        val lp = content.layoutParams as? LinearLayout.LayoutParams
-        if (lp != null) {
-            lp.width = if (mode == ImeSettings.OneHandMode.OFF) {
-                LinearLayout.LayoutParams.MATCH_PARENT
-            } else {
-                (resources.displayMetrics.widthPixels * settings.oneHandWidth).toInt()
-            }
-            content.layoutParams = lp
-        }
+        applyUiScale()
         candidateView?.oneHandMode = when (mode) {
             ImeSettings.OneHandMode.OFF -> CandidateStripView.OneHandDisplayMode.FULL
             ImeSettings.OneHandMode.LEFT -> CandidateStripView.OneHandDisplayMode.LEFT

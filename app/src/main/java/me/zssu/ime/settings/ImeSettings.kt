@@ -9,6 +9,7 @@ import me.zssu.ime.theme.BackgroundFilter
 import me.zssu.ime.theme.ThemeWallpaper
 import androidx.core.content.edit
 import me.zssu.ime.keyboard.FlickGuideStyle
+import me.zssu.ime.keyboard.FlickResolver
 import me.zssu.ime.keyboard.KeyboardStyle
 import java.io.File
 
@@ -237,6 +238,23 @@ class ImeSettings(context: Context) {
             prefs.edit().putString(KEY_FLICK_GUIDE, value.name).apply()
             bumpRevision()
         }
+
+    /**
+     * Practice mode for the flick keyboard: while a key is held, also show the down-flick character
+     * as a ▼ in the lower-left or lower-right corner, where a finger does not hide it. Off by default.
+     */
+    var flickPracticeCorner: FlickResolver.PracticeCorner
+        get() = FlickResolver.PracticeCorner.of(prefs.getString("flick_practice_corner", null))
+        set(value) { prefs.edit().putString("flick_practice_corner", value.name).apply(); bumpRevision() }
+
+    /**
+     * The shrink tool's level (see [me.zssu.ime.keyboard.UiScaleLevels]): the whole keyboard,
+     * toolbar included, is shown at 100, 60, 50, 40 or 30%. Not wired to [bumpRevision] on purpose:
+     * the service resizes the live view instead of rebuilding it, so a composition in progress survives.
+     */
+    var uiShrinkLevel: Int
+        get() = prefs.getInt("ui_shrink_level", 0).coerceIn(0, me.zssu.ime.keyboard.UiScaleLevels.count - 1)
+        set(value) { prefs.edit().putInt("ui_shrink_level", value).apply() }
 
     /** Global key vibration switch, independent of the selected visual theme. */
     var hapticFeedbackEnabled: Boolean

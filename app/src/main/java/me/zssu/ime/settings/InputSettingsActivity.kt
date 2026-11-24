@@ -33,12 +33,14 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Button
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.getValue
@@ -50,6 +52,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import me.zssu.ime.keyboard.FlickGuideStyle
+import me.zssu.ime.keyboard.FlickResolver
 import me.zssu.ime.keyboard.KeyboardStyle
 import me.zssu.ime.theme.ZinnaTheme
 
@@ -94,6 +97,7 @@ private fun InputSettingsScreen(keyTick: Int) {
     var flickInputMode by remember { mutableStateOf(settings.flickInputMode) }
     var guide by remember { mutableStateOf(settings.flickGuideStyle) }
     var hapticFeedback by remember { mutableStateOf(settings.hapticFeedbackEnabled) }
+    var flickPractice by remember { mutableStateOf(settings.flickPracticeCorner) }
     var hardwareKana by remember { mutableStateOf(settings.hardwareKanaEnabled) }
     var jisSymbols by remember { mutableStateOf(settings.hardwareJisSymbols) }
     var kanaColor by remember { mutableStateOf(settings.modeIndicatorKanaColor) }
@@ -225,6 +229,38 @@ private fun InputSettingsScreen(keyTick: Int) {
                         Chip(!hapticFeedback, "オフ") {
                             hapticFeedback = false
                             settings.hapticFeedbackEnabled = false
+                        }
+                    }
+                }
+            }
+
+            Card(shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("フリック練習モード", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "スワイプ(フリック)入力では、指に隠れて、下フリックの文字が見えません。" +
+                            "フリックのキーを押したとき、下フリックの文字を、斜め下に、70%の大きさの ▼ で表示します。" +
+                            "その ▼ の方向(斜め下)にフリックしても、下フリックの文字が入ります。" +
+                            "「4方向表示」のときに効きます。",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    listOf(
+                        FlickResolver.PracticeCorner.OFF to "表示しない",
+                        FlickResolver.PracticeCorner.LEFT_DOWN to "下フリックの文字を左下に表示",
+                        FlickResolver.PracticeCorner.RIGHT_DOWN to "下フリックの文字を右下に表示",
+                    ).forEach { (value, label) ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                flickPractice = value
+                                settings.flickPracticeCorner = value
+                            },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = flickPractice == value,
+                                onClick = { flickPractice = value; settings.flickPracticeCorner = value },
+                            )
+                            Text(label, style = MaterialTheme.typography.bodyLarge)
                         }
                     }
                 }

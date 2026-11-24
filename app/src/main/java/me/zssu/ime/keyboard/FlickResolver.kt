@@ -12,6 +12,23 @@ import kotlin.math.max
  */
 object FlickResolver {
 
+    /**
+     * Flick practice mode: which lower corner shows the down-flick character, drawn as a ▼.
+     * The same corner also counts as a down flick, so a thumb that slides toward the ▼ still
+     * types the down character.
+     */
+    enum class PracticeCorner { OFF, LEFT_DOWN, RIGHT_DOWN;
+        companion object {
+            fun of(name: String?): PracticeCorner = entries.firstOrNull { it.name == name } ?: OFF
+        }
+    }
+
+    /**
+     * Ratio of the shorter to the longer travel above which a drag counts as diagonal (30° to 60°
+     * from either axis). Only the practice corner's diagonal is reinterpreted; the others stay as before.
+     */
+    private const val DIAGONAL_RATIO = 0.577f
+
     /** Latest finger position relative to the key; returning to the center selects center again. */
     class PathTracker(private val originX: Float, private val originY: Float) {
         var dx: Float = 0f
@@ -30,8 +47,23 @@ object FlickResolver {
      * @param dy vertical travel, in pixels (screen coordinates: positive is down)
      * @param thresholdPx distance the finger must travel before a flick counts
      */
-    fun resolve(key: KeySpec, dx: Float, dy: Float, thresholdPx: Float): FlickDirection {
+    fun resolve(
+        key: KeySpec,
+        dx: Float,
+        dy: Float,
+        thresholdPx: Float,
+        corner: PracticeCorner = PracticeCorner.OFF,
+    ): FlickDirection {
         if (max(abs(dx), abs(dy)) < thresholdPx) return FlickDirection.CENTER
+
+        val longer = max(abs(dx), abs(dy))
+        val diagonal = kotlin.math.min(abs(dx), abs(dy)) >= longer * DIAGONAL_RATIO
+        val towardCorner = diagonal && dy > 0f && when (corner) {
+            PracticeCorner.LEFT_DOWN -> dx < 0f
+            PracticeCorner.RIGHT_DOWN -> dx > 0f
+            PracticeCorner.OFF -> false
+        }
+        if (towardCorner && key.output(FlickDirection.DOWN) != null) return FlickDirection.DOWN
 
         // Ties go to the horizontal axis. Thumbs drift vertically more than horizontally, so
         // treating an exact diagonal as horizontal matches how people actually aim at い/え.

@@ -121,6 +121,16 @@ class FlickKeyboardView @JvmOverloads constructor(
 
     /** What to draw while a finger rests on a flick key. See [FlickGuideStyle]. */
     var guideStyle: FlickGuideStyle = FlickGuideStyle.DIRECTIONS
+
+    /**
+     * How much the whole keyboard is scaled down by [ScaleBox] (1 = normal). The view does not draw
+     * differently; it only lengthens the flick distance it measures in its own pixels, because the
+     * finger travels this much less on a shrunken keyboard.
+     */
+    var uiScale: Float = 1f
+
+    /** Practice mode: also draw the down-flick character as a ▼ in this lower corner. */
+    var practiceCorner: FlickResolver.PracticeCorner = FlickResolver.PracticeCorner.OFF
         set(value) {
             field = value
             invalidate()
@@ -198,8 +208,13 @@ class FlickKeyboardView @JvmOverloads constructor(
     private var repeatRunnable: Runnable? = null
     private var longPressRunnable: Runnable? = null
 
+    // Smaller keys need a shorter flick, but not proportionally: on screen, a shrunken keyboard asks for
+    // 50% + 50% x scale of the normal distance (75% at half size). The view measures in unscaled pixels.
     private val flickThresholdPx: Float
-        get() = flickThresholdDp * resources.displayMetrics.density
+        get() {
+            val scale = uiScale.coerceIn(0.1f, 1f)
+            return flickThresholdDp * resources.displayMetrics.density * (0.5f + 0.5f * scale) / scale
+        }
 
     init {
         isFocusable = false
@@ -528,14 +543,17 @@ class FlickKeyboardView @JvmOverloads constructor(
         // outer columns sit beyond its edges. Nudging the whole cross back inside the drawable area
         // keeps every option readable; without it the top row's up-flick — う, く, す … — is simply
         // invisible, which is the one guide a user most needs to see.
-        val shift = fitShift(cells.values)
+        val hint = practiceHintRect(touch)
+        val shift = fitShift(if (hint == null) cells.values else cells.values + hint)
 
         for (rect in cells.values) rect.offset(shift.x, shift.y)
+        hint?.offset(shift.x, shift.y)
 
         for ((direction, rect) in cells) {
             if (touch.key.spec.output(direction) == null) continue
             val selected = direction == touch.direction
-            guideBackgroundPaint.alpha = if (selected) 255 else 200
+            // Opaque, so the key underneath does not show through the guide and blur its letter.
+            guideBackgroundPaint.alpha = 255
             canvas.drawRoundRect(rect, radius, radius, guideBackgroundPaint)
         }
 
@@ -549,6 +567,52 @@ class FlickKeyboardView @JvmOverloads constructor(
             drawOutput(canvas, output.action, output.label, rect.centerX(), rect.centerY(), guideLabelPaint)
         }
         guideBackgroundPaint.alpha = 255
+        if (hint != null) drawPracticeHint(canvas, touch, hint, radius)
+    }
+
+    /**
+     * Where the practice hint goes, or null when it is off or the key has no down-flick character.
+     * Only plain text outputs count: a down-flick that is an action (delete, cursor) is not a letter.
+     */
+    private fun practiceHintRect(touch: Touch): RectF? {
+        if (practiceCorner == FlickResolver.PracticeCorner.OFF) return null
+        val down = touch.key.spec.output(FlickDirection.DOWN) ?: return null
+        if (down.label.isBlank() || OperationKeyIcons.resource(down.action, down.label) != null) return null
+        val b = touch.key.bounds
+        val box = GuideGeometry.hintBox(
+            GuideGeometry.Box(b.left, b.top, b.right, b.bottom),
+            theme.keyGapDp * resources.displayMetrics.density,
+            leftSide = practiceCorner == FlickResolver.PracticeCorner.LEFT_DOWN,
+        )
+        return RectF(box.left, box.top, box.right, box.bottom)
+    }
+
+    private val hintPath = android.graphics.Path()
+
+    /**
+     * The down-flick character at 70% size inside a downward-pointing triangle (▼), in the lower
+     * corner where a finger does not cover it. The triangle says "down" without reading the letter.
+     */
+    private fun drawPracticeHint(canvas: Canvas, touch: Touch, rect: RectF, @Suppress("UNUSED_PARAMETER") radius: Float) {
+        val down = touch.key.spec.output(FlickDirection.DOWN) ?: return
+        val selected = touch.direction == FlickDirection.DOWN
+        hintPath.reset()
+        hintPath.moveTo(rect.left, rect.top)
+        hintPath.lineTo(rect.right, rect.top)
+        hintPath.lineTo(rect.centerX(), rect.bottom)
+        hintPath.close()
+        guideBackgroundPaint.alpha = 255
+        canvas.drawPath(hintPath, guideBackgroundPaint)
+        guideHitAreaPaint.alpha = if (selected) 230 else 160
+        guideHitAreaPaint.strokeWidth = (if (selected) 2f else 1f) * resources.displayMetrics.density
+        guideHitAreaPaint.strokeJoin = Paint.Join.ROUND
+        canvas.drawPath(hintPath, guideHitAreaPaint)
+        val size = guideLabelPaint.textSize
+        guideLabelPaint.textSize = size * GuideGeometry.HINT_SCALE
+        guideLabelPaint.color = if (selected) theme.flickGuideSelectedLabelColor else theme.flickGuideLabelColor
+        // The widest part of a ▼ is its top, so the letter sits above the triangle's middle.
+        drawOutput(canvas, down.action, down.label, rect.centerX(), rect.top + rect.height() * 0.38f, guideLabelPaint)
+        guideLabelPaint.textSize = size
     }
 
     /** Draws the selectable area around each actual character instead of abstract geometry. */
@@ -800,6 +864,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             dx = touch.path.dx,
             dy = touch.path.dy,
             thresholdPx = flickThresholdPx,
+            corner = practiceCorner,
         )
 
     private fun commit(touch: Touch) {

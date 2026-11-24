@@ -36,7 +36,17 @@ internal class ProofreadRemoteSettings(context: Context) {
     var engine: ProofreadEngine
         get() = runCatching { ProofreadEngine.valueOf(prefs.getString("engine", null) ?: "") }
             .getOrDefault(ProofreadEngine.LOCAL)
-        set(value) { prefs.edit().putString("engine", value.name).apply() }
+        set(value) {
+            val editor = prefs.edit().putString("engine", value.name)
+            // Remember the last external choice so that picking "cloud / Ollama" again restores it.
+            if (value != ProofreadEngine.LOCAL) editor.putString("last_remote_engine", value.name)
+            editor.apply()
+        }
+
+    /** The external engine to use when the user switches from the on-device model back to an external one. */
+    val lastRemoteEngine: ProofreadEngine
+        get() = runCatching { ProofreadEngine.valueOf(prefs.getString("last_remote_engine", null) ?: "") }
+            .getOrNull()?.takeIf { it != ProofreadEngine.LOCAL } ?: ProofreadEngine.OPENROUTER
 
     var openRouterModel: String
         get() = prefs.getString("openrouter_model", "").orEmpty()
