@@ -32,6 +32,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.material3.Button
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -248,7 +249,11 @@ private fun Chip(selected: Boolean, label: String, onClick: () -> Unit) {
 private fun RecognizedKeyboardsCard(tick: Int, jisSymbols: Boolean) {
     val context = LocalContext.current
     // tick changes when a key is pressed or a keyboard is attached or removed.
-    val keyboards = remember(tick) { KeyboardLayoutInfo.attachedKeyboards() }
+    // Keys the keyboard service handles itself never reach this screen, so the button re-reads
+    // what the service has recorded.
+    var judgeTick by remember { mutableIntStateOf(0) }
+    var judged by remember { mutableStateOf(false) }
+    val keyboards = remember(tick, judgeTick) { KeyboardLayoutInfo.attachedKeyboards() }
     Card(shape = RoundedCornerShape(14.dp)) {
         Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("認識されているハードウェアキーボード", style = MaterialTheme.typography.titleMedium)
@@ -278,6 +283,23 @@ private fun RecognizedKeyboardsCard(tick: Int, jisSymbols: Boolean) {
                         else "このキーボードは JIS 配列ですが、端末は英語配列として扱っています。下の「JIS配列の記号」をオンにすると、英数入力でも印字どおりの記号が入ります",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.primary,
+                    )
+                }
+            }
+            if (keyboards.isNotEmpty()) {
+                Button(onClick = { judged = true; judgeTick++ }, modifier = Modifier.fillMaxWidth()) {
+                    Text("いますぐキーボード配列を判定")
+                }
+            }
+            if (judged && keyboards.isNotEmpty()) {
+                keyboards.forEach { device ->
+                    val jis = KeyboardLayoutInfo.seenJisKey(context, device)
+                    Text(
+                        device.name + ": " + if (jis) "判定結果は JIS配列です"
+                        else "まだ判定できません。¥ キー・ろ キー・無変換・変換キーのどれかを押してから、もう一度ボタンを押してください。これらのキーがない場合は、英語配列です",
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = if (jis) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface,
                     )
                 }
             }
