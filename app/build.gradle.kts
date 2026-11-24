@@ -26,8 +26,8 @@ android {
         applicationId = "jp.kanakana.ime"
         minSdk = 24
         targetSdk = 36
-        versionCode = 94
-        versionName = "1.0.1"
+        versionCode = 95
+        versionName = "1.0.2"
     }
 
     buildTypes {
