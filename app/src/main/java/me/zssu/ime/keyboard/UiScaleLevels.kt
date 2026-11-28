@@ -2,9 +2,9 @@ package me.zssu.ime.keyboard
 
 import kotlin.math.roundToInt
 
-/** The sizes the shrink tool cycles through: normal, then 60%, 50%, 40%, 30%, then normal again. */
+/** The sizes the shrink tool cycles through: normal, then 80%, 60%, 50%, 40%, 30%, then normal again. */
 object UiScaleLevels {
-    private val scales = floatArrayOf(1f, 0.6f, 0.5f, 0.4f, 0.3f)
+    private val scales = floatArrayOf(1f, 0.8f, 0.6f, 0.5f)
 
     val count: Int get() = scales.size
 

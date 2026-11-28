@@ -54,19 +54,10 @@ data class InputFieldPolicy(
                 return InputFieldPolicy(Plane.NUMERIC, showCandidates = false, incognito = false)
             }
 
-            val isNetworkText = typeClass == InputType.TYPE_CLASS_TEXT && variation in setOf(
-                InputType.TYPE_TEXT_VARIATION_EMAIL_ADDRESS,
-                InputType.TYPE_TEXT_VARIATION_WEB_EMAIL_ADDRESS,
-                InputType.TYPE_TEXT_VARIATION_URI,
-            )
-            return if (isNetworkText) {
-                // Keep the toolbar and Mozc's English suggestions available on the QWERTY plane.
-                // Passwords are handled above and remain the only ASCII fields where the strip is
-                // hidden and learning is disabled.
-                InputFieldPolicy(Plane.ASCII, showCandidates = true, incognito = false)
-            } else {
-                DEFAULT
-            }
+            // URL and e-mail fields are deliberately NOT switched to English: Chrome's address bar is a
+            // URL field and is also where people search in Japanese, so the user's own mode applies.
+            // Only passwords (above) and number fields change the keyboard by themselves.
+            return DEFAULT
         }
     }
 }

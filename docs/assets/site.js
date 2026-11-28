@@ -63,6 +63,7 @@
     {
       group: "リリースノート",
       items: [
+        ["releases/v1.0.4", "1.0.4", "フローティングモードと片手モードの段階移動", "docs/releases/v1.0.4.md", "release 1.0.4 フローティング 片手 縮小 ガイド 文字色 url"],
         ["releases/v1.0.3", "1.0.3", "フリック練習モードと縮小表示", "docs/releases/v1.0.3.md", "release 1.0.3 フリック 練習 縮小 表示 校正 接続先"],
         ["releases/v1.0.2", "1.0.2", "キーボード配列の判定ボタン", "docs/releases/v1.0.2.md", "release 1.0.2 キーボード 配列 判定"],
         ["releases/v1.0.1", "1.0.1", "JIS キーボードの英数入力と入力モード表示", "docs/releases/v1.0.1.md", "release 1.0.1 jis 記号 入力モード"],

@@ -136,6 +136,15 @@ class FlickKeyboardView @JvmOverloads constructor(
             invalidate()
         }
 
+    var practiceShape: PracticeShape = PracticeShape.TRIANGLE
+    var guideTextColor: GuideTextColor = GuideTextColor.THEME
+
+    private fun guideLabelColor(selected: Boolean): Int = when (guideTextColor) {
+        GuideTextColor.WHITE -> Color.WHITE
+        GuideTextColor.BLACK -> Color.BLACK
+        GuideTextColor.THEME -> if (selected) theme.flickGuideSelectedLabelColor else theme.flickGuideLabelColor
+    }
+
     /** Reused so the preview costs no allocation on a path that redraws as the finger moves. */
     private val previewRect = RectF()
 
@@ -531,7 +540,7 @@ class FlickKeyboardView @JvmOverloads constructor(
 
         guideBackgroundPaint.alpha = 255
         canvas.drawRoundRect(previewRect, radius, radius, guideBackgroundPaint)
-        guideLabelPaint.color = theme.flickGuideSelectedLabelColor
+        guideLabelPaint.color = guideLabelColor(selected = true)
         drawOutput(canvas, output.action, output.label, previewRect.centerX(), previewRect.centerY(), guideLabelPaint)
     }
 
@@ -562,8 +571,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         for ((direction, rect) in cells) {
             val output = touch.key.spec.output(direction) ?: continue
             val selected = direction == touch.direction
-            guideLabelPaint.color =
-                if (selected) theme.flickGuideSelectedLabelColor else theme.flickGuideLabelColor
+            guideLabelPaint.color = guideLabelColor(selected)
             drawOutput(canvas, output.action, output.label, rect.centerX(), rect.centerY(), guideLabelPaint)
         }
         guideBackgroundPaint.alpha = 255
@@ -583,6 +591,7 @@ class FlickKeyboardView @JvmOverloads constructor(
             GuideGeometry.Box(b.left, b.top, b.right, b.bottom),
             theme.keyGapDp * resources.displayMetrics.density,
             leftSide = practiceCorner == FlickResolver.PracticeCorner.LEFT_DOWN,
+            scale = if (practiceShape == PracticeShape.SQUARE) 1f else GuideGeometry.HINT_SCALE,
         )
         return RectF(box.left, box.top, box.right, box.bottom)
     }
@@ -593,9 +602,21 @@ class FlickKeyboardView @JvmOverloads constructor(
      * The down-flick character at 70% size inside a downward-pointing triangle (▼), in the lower
      * corner where a finger does not cover it. The triangle says "down" without reading the letter.
      */
-    private fun drawPracticeHint(canvas: Canvas, touch: Touch, rect: RectF, @Suppress("UNUSED_PARAMETER") radius: Float) {
+    private fun drawPracticeHint(canvas: Canvas, touch: Touch, rect: RectF, radius: Float) {
         val down = touch.key.spec.output(FlickDirection.DOWN) ?: return
         val selected = touch.direction == FlickDirection.DOWN
+        if (practiceShape == PracticeShape.SQUARE) {
+            // A cell the size of the neighbouring guide cells, in the diagonal slot below the key.
+            val density = resources.displayMetrics.density
+            guideBackgroundPaint.alpha = 255
+            canvas.drawRoundRect(rect, radius, radius, guideBackgroundPaint)
+            guideHitAreaPaint.alpha = if (selected) 230 else 120
+            guideHitAreaPaint.strokeWidth = (if (selected) 2f else 1f) * density
+            canvas.drawRoundRect(rect, radius, radius, guideHitAreaPaint)
+            guideLabelPaint.color = guideLabelColor(selected)
+            drawOutput(canvas, down.action, down.label, rect.centerX(), rect.centerY(), guideLabelPaint)
+            return
+        }
         hintPath.reset()
         hintPath.moveTo(rect.left, rect.top)
         hintPath.lineTo(rect.right, rect.top)
@@ -609,7 +630,7 @@ class FlickKeyboardView @JvmOverloads constructor(
         canvas.drawPath(hintPath, guideHitAreaPaint)
         val size = guideLabelPaint.textSize
         guideLabelPaint.textSize = size * GuideGeometry.HINT_SCALE
-        guideLabelPaint.color = if (selected) theme.flickGuideSelectedLabelColor else theme.flickGuideLabelColor
+        guideLabelPaint.color = guideLabelColor(selected)
         // The widest part of a ▼ is its top, so the letter sits above the triangle's middle.
         drawOutput(canvas, down.action, down.label, rect.centerX(), rect.top + rect.height() * 0.38f, guideLabelPaint)
         guideLabelPaint.textSize = size

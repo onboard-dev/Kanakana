@@ -201,6 +201,16 @@ class ImeSettings(context: Context) {
             bumpRevision()
         }
 
+    /** Position in [me.zssu.ime.keyboard.OneHandSteps] after the last press of the one-hand button. */
+    var oneHandStep: Int
+        get() = prefs.getInt("one_hand_step", -1)
+        set(value) { prefs.edit().putInt("one_hand_step", value).apply() }
+
+    /** Sets the one-hand width without a settings revision bump: the button resizes the live keyboard. */
+    fun setOneHandWidthLive(value: Float) {
+        prefs.edit().putFloat("one_hand_width", value.coerceIn(0.6f, 1f)).apply()
+    }
+
     var oneHandWidth: Float
         get() = prefs.getFloat("one_hand_width", 0.82f).coerceIn(0.6f, 1f)
         set(value) { prefs.edit().putFloat("one_hand_width", value.coerceIn(0.6f, 1f)).apply(); bumpRevision() }
@@ -247,6 +257,16 @@ class ImeSettings(context: Context) {
         get() = FlickResolver.PracticeCorner.of(prefs.getString("flick_practice_corner", null))
         set(value) { prefs.edit().putString("flick_practice_corner", value.name).apply(); bumpRevision() }
 
+    /** How the practice hint is drawn: a triangle at 70% (default) or a full-size square. */
+    var flickPracticeShape: me.zssu.ime.keyboard.PracticeShape
+        get() = me.zssu.ime.keyboard.PracticeShape.of(prefs.getString("flick_practice_shape", null))
+        set(value) { prefs.edit().putString("flick_practice_shape", value.name).apply(); bumpRevision() }
+
+    /** Letter colour in the flick guide: theme (default), always white, or always black. */
+    var flickGuideTextColor: me.zssu.ime.keyboard.GuideTextColor
+        get() = me.zssu.ime.keyboard.GuideTextColor.of(prefs.getString("flick_guide_text_color", null))
+        set(value) { prefs.edit().putString("flick_guide_text_color", value.name).apply(); bumpRevision() }
+
     /**
      * The shrink tool's level (see [me.zssu.ime.keyboard.UiScaleLevels]): the whole keyboard,
      * toolbar included, is shown at 100, 60, 50, 40 or 30%. Not wired to [bumpRevision] on purpose:
@@ -255,6 +275,23 @@ class ImeSettings(context: Context) {
     var uiShrinkLevel: Int
         get() = prefs.getInt("ui_shrink_level", 0).coerceIn(0, me.zssu.ime.keyboard.UiScaleLevels.count - 1)
         set(value) { prefs.edit().putInt("ui_shrink_level", value).apply() }
+
+    /** Floating mode (long press the shrink tool): the keyboard floats over the app and can be dragged. */
+    var floatingMode: Boolean
+        get() = prefs.getBoolean("floating_mode", false)
+        set(value) { prefs.edit().putBoolean("floating_mode", value).apply() }
+
+    /** Where the user dragged the floating keyboard to (top-left of the panel, in pixels), or null if never moved. */
+    var floatingPosition: Pair<Int, Int>?
+        get() = if (prefs.contains("floating_x") && prefs.contains("floating_y")) {
+            prefs.getInt("floating_x", 0) to prefs.getInt("floating_y", 0)
+        } else null
+        set(value) {
+            prefs.edit().apply {
+                if (value == null) { remove("floating_x"); remove("floating_y") }
+                else { putInt("floating_x", value.first); putInt("floating_y", value.second) }
+            }.apply()
+        }
 
     /** Global key vibration switch, independent of the selected visual theme. */
     var hapticFeedbackEnabled: Boolean

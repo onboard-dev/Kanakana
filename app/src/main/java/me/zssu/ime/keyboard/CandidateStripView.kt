@@ -57,6 +57,9 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
     private var swipeY = 0f
     var onCandidateFocusRequested: ((MozcSession.Candidate) -> Unit)? = null
     var onToolAction: ((ToolAction) -> Unit)? = null
+
+    /** Long press on a tool in the strip: the shrink tool (floating mode) and the one-hand tool (back to full width). */
+    var onToolLongPress: ((ToolAction) -> Unit)? = null
     var onSnippetSelected: ((String) -> Unit)? = null
     var onSnippetSearch: (() -> Unit)? = null
     var onClipboardSearch: (() -> Unit)? = null
@@ -510,7 +513,7 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         return placeNewTools(saved)
     }
     private fun toolLabel(action: ToolAction): String = when (action) {
-        ToolAction.SHRINK_CYCLE -> "縮小表示(100→60→50→40→30%)"
+        ToolAction.SHRINK_CYCLE -> "縮小表示(100→80→60→50%)"
 
         ToolAction.AI_STYLE -> "文体補正"
         ToolAction.CLIPBOARD -> "クリップボード"
@@ -571,6 +574,13 @@ class CandidateStripView(context: Context) : HorizontalScrollView(context) {
         for (action in visibleTools) {
             val button = if (action == ToolAction.ONE_HAND_CYCLE) oneHandButton(expand = true) { onToolAction?.invoke(action) }
                 else iconButton(toolIcon(action), toolLabel(action), true) { onToolAction?.invoke(action) }
+            if (action == ToolAction.SHRINK_CYCLE || action == ToolAction.ONE_HAND_CYCLE) {
+                button.setOnLongClickListener {
+                    if (theme.hapticFeedback) it.performHapticFeedback(HapticFeedbackConstants.LONG_PRESS)
+                    onToolLongPress?.invoke(action)
+                    true
+                }
+            }
             container.addView(button)
         }
         toolbarState = next

@@ -16,11 +16,11 @@ internal object GuideGeometry {
      * Where the practice hint goes: [HINT_SCALE] of the key's size, centred in the cell diagonally
      * below the tapped key ([leftSide] picks lower left or lower right). [gap] is the gap between keys.
      */
-    fun hintBox(key: Box, gap: Float, leftSide: Boolean): Box {
+    fun hintBox(key: Box, gap: Float, leftSide: Boolean, scale: Float = HINT_SCALE): Box {
         val side = offset(if (leftSide) FlickDirection.LEFT else FlickDirection.RIGHT, key.width, key.height, gap)
         val down = offset(FlickDirection.DOWN, key.width, key.height, gap)
-        val w = key.width * HINT_SCALE
-        val h = key.height * HINT_SCALE
+        val w = key.width * scale
+        val h = key.height * scale
         val centerX = (key.left + key.right) / 2f + side.x
         val centerY = (key.top + key.bottom) / 2f + down.y
         return Box(centerX - w / 2f, centerY - h / 2f, centerX + w / 2f, centerY + h / 2f)

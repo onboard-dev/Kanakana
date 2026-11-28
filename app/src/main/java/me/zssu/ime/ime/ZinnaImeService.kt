@@ -124,6 +124,8 @@ class ZinnaImeService : InputMethodService() {
     private var panelView: KeyboardPanelView? = null
     private var contentLayout: LinearLayout? = null
     private var contentScaleBox: me.zssu.ime.keyboard.ScaleBox? = null
+    private var inputRoot: FrameLayout? = null
+    private var dragGrip: View? = null
     private var candidateView: CandidateStripView? = null
     private var meaningPopup: MeaningPopupView? = null
     private var layout: KeyboardLayout? = null
@@ -235,11 +237,7 @@ class ZinnaImeService : InputMethodService() {
             setMediaActive(!fieldPolicy.incognito)
             // Seed all previously observed safe areas. A replacement view can draw before Android
             // dispatches fresh insets; starting at zero lets its first frame overlap OS controls.
-            updatePadding(
-                left = systemInsetLeft,
-                right = systemInsetRight,
-                bottom = systemInsetBottom,
-            )
+            applyPanelInsets(this)
             ViewCompat.setOnApplyWindowInsetsListener(this) { view, insets ->
                 val bars = insets.getInsets(
                     WindowInsetsCompat.Type.navigationBars() or
@@ -263,11 +261,7 @@ class ZinnaImeService : InputMethodService() {
                 systemInsetLeft = padding.left
                 systemInsetRight = padding.right
                 systemInsetBottom = padding.bottom
-                view.updatePadding(
-                    left = padding.left,
-                    right = padding.right,
-                    bottom = padding.bottom,
-                )
+                applyPanelInsets(view)
                 // Preserve dispatch for the popup and any OEM parent handling.
                 insets
             }
@@ -280,6 +274,8 @@ class ZinnaImeService : InputMethodService() {
             viewTreeObserver.addOnPreDrawListener(object : android.view.ViewTreeObserver.OnPreDrawListener {
                 override fun onPreDraw(): Boolean {
                     if (!isAttachedToWindow || height <= 0) return true
+                    // A floating keyboard is not against the screen edge, so it needs no safe-area padding.
+                    if (::settings.isInitialized && settings.floatingMode) return true
                     val windowInsets = ViewCompat.getRootWindowInsets(this@apply)
                     val navigationType = WindowInsetsCompat.Type.navigationBars()
                     if (windowInsets != null && !windowInsets.isVisible(navigationType)) return true
@@ -535,6 +531,8 @@ class ZinnaImeService : InputMethodService() {
             guideOverflowTop = stripHeight.toFloat()
             guideStyle = settings.flickGuideStyle
             practiceCorner = settings.flickPracticeCorner
+            practiceShape = settings.flickPracticeShape
+            guideTextColor = settings.flickGuideTextColor
             listener = FlickKeyboardView.OnKeyOutputListener(::onKeyOutput)
         }
 
@@ -548,6 +546,13 @@ class ZinnaImeService : InputMethodService() {
             segmentBar?.visibility = if (!expanded && isConverting && segmentEditing) View.VISIBLE else View.GONE
         }
         candidates.onEditCommand = ::handleEditCommand
+        candidates.onToolLongPress = { action ->
+            when (action) {
+                CandidateStripView.ToolAction.SHRINK_CYCLE -> toggleFloatingMode()
+                CandidateStripView.ToolAction.ONE_HAND_CYCLE -> resetOneHandMode()
+                else -> Unit
+            }
+        }
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             clipChildren = false
@@ -558,6 +563,29 @@ class ZinnaImeService : InputMethodService() {
                 ImeSettings.OneHandMode.OFF -> Gravity.CENTER_HORIZONTAL
             }
         }
+        // A thin handle across the top, shown only in floating mode: drag it to move the keyboard.
+        val grip = LinearLayout(this).apply {
+            gravity = Gravity.CENTER
+            visibility = View.GONE
+            contentDescription = "キーボードを移動(ドラッグ)"
+            setBackgroundColor(this@ZinnaImeService.theme.toolbarBackgroundColor)
+            addView(
+                View(this@ZinnaImeService).apply {
+                    background = android.graphics.drawable.GradientDrawable().apply {
+                        setColor(this@ZinnaImeService.theme.candidateTextColor)
+                        alpha = 140
+                        cornerRadius = 3 * resources.displayMetrics.density
+                    }
+                },
+                LinearLayout.LayoutParams((48 * resources.displayMetrics.density).toInt(), (5 * resources.displayMetrics.density).toInt()),
+            )
+        }
+        content.addView(
+            grip,
+            LinearLayout.LayoutParams(LinearLayout.LayoutParams.MATCH_PARENT, (24 * resources.displayMetrics.density).toInt()),
+        )
+        attachDragHandle(grip)
+        dragGrip = grip
         panel.gravity = when (effectiveOneHandMode()) {
             ImeSettings.OneHandMode.LEFT -> Gravity.START
             ImeSettings.OneHandMode.RIGHT -> Gravity.END
@@ -662,6 +690,7 @@ class ZinnaImeService : InputMethodService() {
         )
 
         candidateView = candidates
+        inputRoot = root
         panelView = panel
         contentLayout = content
         keyboard.onRepeatStopped = inputQueue::cancelRepeats
@@ -1265,7 +1294,7 @@ class ZinnaImeService : InputMethodService() {
      * Updates the existing view's gravity and width in place instead of rebuilding, so a live
      * composition survives the switch.
      */
-    /** Each press goes to the next size (100 -> 60 -> 50 -> 40 -> 30% -> 100), in place so typing is not interrupted. */
+    /** Each press goes to the next size (100 -> 80 -> 60 -> 50 -> 40 -> 30% -> 100), in place so typing is not interrupted. */
     private fun cycleUiScale() {
         val next = me.zssu.ime.keyboard.UiScaleLevels.next(settings.uiShrinkLevel)
         settings.uiShrinkLevel = next
@@ -1274,27 +1303,48 @@ class ZinnaImeService : InputMethodService() {
     }
 
     /**
-     * Applies the shrink level to the live views: the whole panel (candidate row, tools and keys) is
-     * scaled by [me.zssu.ime.keyboard.ScaleBox], and while shrunk the panel is only as wide as its
-     * content and sits on the side chosen by the one-hand mode, so the rest of the window is empty.
+     * Pads the panel by the system bars so keys do not sit under the navigation bar. A floating keyboard is
+     * not against the screen edge, so it gets no padding at all; the default floating position keeps clear of
+     * the navigation bar with a bottom margin instead (see [applyUiScale]).
+     */
+    private fun applyPanelInsets(view: View) {
+        val floating = ::settings.isInitialized && settings.floatingMode
+        view.updatePadding(
+            left = if (floating) 0 else systemInsetLeft,
+            right = if (floating) 0 else systemInsetRight,
+            bottom = if (floating) 0 else systemInsetBottom,
+        )
+    }
+
+    /**
+     * Applies the shrink level, one-hand mode and floating mode to the live views.
+     *
+     * The whole panel (candidate row, tools and keys) is scaled by [me.zssu.ime.keyboard.ScaleBox].
+     * Whenever the keyboard is narrower than the screen (shrunk, one-hand, or floating) the panel is only
+     * as wide as its content and the rest of the window is empty and see-through. Shrunk or floating, it
+     * also floats over the app instead of pushing it up (see [onComputeInsets]).
      */
     private fun applyUiScale() {
         val box = contentScaleBox ?: return
         val panel = panelView ?: return
+        applyPanelInsets(panel)
         val scale = me.zssu.ime.keyboard.UiScaleLevels.scale(settings.uiShrinkLevel)
         val mode = effectiveOneHandMode()
-        val screenWidth = resources.displayMetrics.widthPixels
+        val floating = settings.floatingMode
+        val shrunk = scale < 1f
+        val narrow = shrunk || mode != ImeSettings.OneHandMode.OFF || floating
+        val metrics = resources.displayMetrics
         val logicalWidth = if (mode == ImeSettings.OneHandMode.OFF) {
-            (screenWidth - panel.paddingLeft - panel.paddingRight).coerceAtLeast(1)
+            (metrics.widthPixels - panel.paddingLeft - panel.paddingRight).coerceAtLeast(1)
         } else {
-            (screenWidth * settings.oneHandWidth).toInt()
+            (metrics.widthPixels * settings.oneHandWidth).toInt()
         }
         box.logicalWidth = logicalWidth
         box.scale = scale
         (box.layoutParams as? LinearLayout.LayoutParams)?.let {
             it.width = when {
-                scale < 1f -> LinearLayout.LayoutParams.WRAP_CONTENT
-                mode == ImeSettings.OneHandMode.OFF -> LinearLayout.LayoutParams.MATCH_PARENT
+                shrunk -> LinearLayout.LayoutParams.WRAP_CONTENT
+                mode == ImeSettings.OneHandMode.OFF && !floating -> LinearLayout.LayoutParams.MATCH_PARENT
                 else -> logicalWidth
             }
             box.layoutParams = it
@@ -1304,34 +1354,175 @@ class ZinnaImeService : InputMethodService() {
             ImeSettings.OneHandMode.RIGHT -> Gravity.END
             ImeSettings.OneHandMode.OFF -> Gravity.CENTER_HORIZONTAL
         }
-        panel.layoutParams = FrameLayout.LayoutParams(
-            if (scale < 1f) FrameLayout.LayoutParams.WRAP_CONTENT else FrameLayout.LayoutParams.MATCH_PARENT,
-            FrameLayout.LayoutParams.MATCH_PARENT,
-            horizontal or Gravity.TOP,
-        )
+        dragGrip?.visibility = if (floating) View.VISIBLE else View.GONE
+        // In floating mode the window is made as tall as the screen so the panel has room to move in;
+        // only the panel itself takes touches (see onComputeInsets).
+        inputRoot?.minimumHeight = if (floating) metrics.heightPixels else 0
+        val params = if (floating) {
+            FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT).also { lp ->
+                val saved = settings.floatingPosition
+                if (saved != null) {
+                    lp.gravity = Gravity.TOP or Gravity.START
+                    lp.leftMargin = saved.first
+                    lp.topMargin = saved.second
+                } else {
+                    lp.gravity = horizontal or Gravity.BOTTOM
+                    lp.bottomMargin = systemInsetBottom
+                }
+            }
+        } else {
+            FrameLayout.LayoutParams(
+                if (narrow) FrameLayout.LayoutParams.WRAP_CONTENT else FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT,
+                horizontal or Gravity.TOP,
+            )
+        }
+        panel.layoutParams = params
+        applyPanelInsets(panel)
         keyboardView?.uiScale = scale
+        applyFloatingWindowBackground(narrow)
+        if (floating) panel.post { keepPanelInsideWindow(save = false) }
+        // The window changes height when floating starts or stops. Ask for a fresh layout and insets once the
+        // new size is in place, otherwise the app is not lifted above the keyboard after floating is turned off.
+        window?.window?.decorView?.let { decor ->
+            decor.requestLayout()
+            decor.post {
+                decor.requestLayout()
+                decor.viewTreeObserver.dispatchOnGlobalLayout()
+            }
+        }
+    }
+
+    /** Pulls a dragged panel back inside the window, e.g. after the size or the screen changed. */
+    private fun keepPanelInsideWindow(save: Boolean) {
+        val panel = panelView ?: return
+        val root = inputRoot ?: return
+        val lp = panel.layoutParams as? FrameLayout.LayoutParams ?: return
+        if (lp.gravity != (Gravity.TOP or Gravity.START) || root.width <= 0 || panel.width <= 0) return
+        val point = me.zssu.ime.keyboard.FloatingPlacement.clamp(
+            lp.leftMargin, lp.topMargin, panel.width, panel.height, root.width, root.height,
+        )
+        if (point.x != lp.leftMargin || point.y != lp.topMargin) {
+            lp.leftMargin = point.x
+            lp.topMargin = point.y
+            panel.layoutParams = lp
+        }
+        if (save) settings.floatingPosition = point.x to point.y
+    }
+
+    /** Dragging the handle moves the floating keyboard; the position is remembered. */
+    @android.annotation.SuppressLint("ClickableViewAccessibility")
+    private fun attachDragHandle(grip: View) {
+        var startRawX = 0f
+        var startRawY = 0f
+        var startLeft = 0
+        var startTop = 0
+        grip.setOnTouchListener { _, event ->
+            val panel = panelView ?: return@setOnTouchListener false
+            val root = inputRoot ?: return@setOnTouchListener false
+            when (event.actionMasked) {
+                android.view.MotionEvent.ACTION_DOWN -> {
+                    startRawX = event.rawX
+                    startRawY = event.rawY
+                    startLeft = panel.left
+                    startTop = panel.top
+                    true
+                }
+                android.view.MotionEvent.ACTION_MOVE -> {
+                    val point = me.zssu.ime.keyboard.FloatingPlacement.clamp(
+                        startLeft + (event.rawX - startRawX).toInt(),
+                        startTop + (event.rawY - startRawY).toInt(),
+                        panel.width, panel.height, root.width, root.height,
+                    )
+                    val lp = (panel.layoutParams as? FrameLayout.LayoutParams) ?: return@setOnTouchListener true
+                    lp.gravity = Gravity.TOP or Gravity.START
+                    lp.leftMargin = point.x
+                    lp.topMargin = point.y
+                    panel.layoutParams = lp
+                    true
+                }
+                android.view.MotionEvent.ACTION_UP, android.view.MotionEvent.ACTION_CANCEL -> {
+                    keepPanelInsideWindow(save = true)
+                    true
+                }
+                else -> true
+            }
+        }
+    }
+
+    /** Long press on the shrink tool: turn floating mode on or off. */
+    private fun toggleFloatingMode() {
+        val on = !settings.floatingMode
+        settings.floatingMode = on
+        applyUiScale()
+        Toast.makeText(
+            this,
+            if (on) "フローティングモード オン(上の ━ をドラッグして移動)" else "フローティングモード オフ",
+            Toast.LENGTH_SHORT,
+        ).show()
+    }
+
+    private var windowBackgroundSaved = false
+    private var savedWindowBackground: android.graphics.drawable.Drawable? = null
+
+    /**
+     * While the keyboard is narrower than the screen, the window around it must not paint anything:
+     * some devices give the input window an opaque (white) background that would otherwise show as
+     * blank bars beside the keyboard. The original background is put back when the keyboard is full width.
+     */
+    private fun applyFloatingWindowBackground(transparent: Boolean) {
+        val target = window?.window ?: return
+        if (transparent) {
+            if (!windowBackgroundSaved) {
+                savedWindowBackground = target.decorView.background
+                windowBackgroundSaved = true
+            }
+            target.setBackgroundDrawable(android.graphics.drawable.ColorDrawable(Color.TRANSPARENT))
+        } else if (windowBackgroundSaved) {
+            target.setBackgroundDrawable(savedWindowBackground)
+            windowBackgroundSaved = false
+            savedWindowBackground = null
+        }
     }
 
     /**
-     * While shrunk, only the shrunken panel takes touches; the empty area beside it passes them to
-     * the app behind. Without this the transparent part of the window would still swallow taps.
+     * Only the panel takes touches while the keyboard is narrower than the screen; taps beside it go to
+     * the app behind. When it is shrunk or floating, the app is also not resized to make room (no content
+     * or visible inset), so the app stays visible around and behind the keyboard.
      */
     override fun onComputeInsets(outInsets: InputMethodService.Insets) {
         super.onComputeInsets(outInsets)
         val panel = panelView ?: return
-        if (me.zssu.ime.keyboard.UiScaleLevels.scale(settings.uiShrinkLevel) >= 1f || !panel.isShown) return
+        val scale = me.zssu.ime.keyboard.UiScaleLevels.scale(settings.uiShrinkLevel)
+        val floating = settings.floatingMode
+        val narrow = scale < 1f || floating || effectiveOneHandMode() != ImeSettings.OneHandMode.OFF
+        if (!narrow || !panel.isShown) return
         val location = IntArray(2)
         panel.getLocationInWindow(location)
+        if (scale < 1f || floating) {
+            window?.window?.decorView?.height?.takeIf { it > 0 }?.let {
+                outInsets.contentTopInsets = it
+                outInsets.visibleTopInsets = it
+            }
+        }
         outInsets.touchableInsets = InputMethodService.Insets.TOUCHABLE_INSETS_REGION
         outInsets.touchableRegion.set(location[0], location[1], location[0] + panel.width, location[1] + panel.height)
     }
 
-    private fun cycleOneHandMode() {
-        val next = when (effectiveOneHandMode()) {
-            ImeSettings.OneHandMode.OFF -> ImeSettings.OneHandMode.LEFT
-            ImeSettings.OneHandMode.LEFT -> ImeSettings.OneHandMode.RIGHT
-            ImeSettings.OneHandMode.RIGHT -> ImeSettings.OneHandMode.OFF
-        }
+    /** Long press on the one-hand tool: back to the full-width keyboard. */
+    private fun resetOneHandMode() {
+        if (effectiveOneHandMode() == ImeSettings.OneHandMode.OFF) return
+        cycleOneHandMode(toIndex = 0)
+    }
+
+    private fun cycleOneHandMode(toIndex: Int? = null) {
+        val stepIndex = toIndex ?: me.zssu.ime.keyboard.OneHandSteps.nextIndex(
+            effectiveOneHandMode(), settings.oneHandWidth, settings.oneHandStep,
+        )
+        val step = me.zssu.ime.keyboard.OneHandSteps.steps[stepIndex]
+        val next = step.mode
+        settings.oneHandStep = stepIndex
+        if (next != ImeSettings.OneHandMode.OFF) settings.setOneHandWidthLive(step.percent / 100f)
         val profile = activeProfile
         if (profile != null) {
             activeProfile = profile.copy(oneHandMode = next.name).also(appProfiles::save)
@@ -1353,6 +1544,11 @@ class ZinnaImeService : InputMethodService() {
         content.gravity = gravity
         panel.gravity = gravity
         applyUiScale()
+        if (next == ImeSettings.OneHandMode.OFF) {
+            if (toIndex != null) Toast.makeText(this, "片手モード オフ(100%表示)", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "片手モード ${if (next == ImeSettings.OneHandMode.LEFT) "左" else "右"}寄せ ${step.percent}%", Toast.LENGTH_SHORT).show()
+        }
         candidateView?.oneHandMode = when (mode) {
             ImeSettings.OneHandMode.OFF -> CandidateStripView.OneHandDisplayMode.FULL
             ImeSettings.OneHandMode.LEFT -> CandidateStripView.OneHandDisplayMode.LEFT
@@ -1828,8 +2024,8 @@ class ZinnaImeService : InputMethodService() {
     private fun refreshModeIndicator() {
         val view = modeIndicator ?: return
         if (!::settings.isInitialized) return
-        // Passwords, URLs and terminals always take plain keys, whatever the mode key was set to.
-        val kana = hardwareKanaOn && fieldPolicy.plane == InputFieldPolicy.Plane.USER_DEFAULT && !fieldPolicy.rawKeyEvents
+        // Passwords (and number fields) always take plain keys, whatever the mode key was set to.
+        val kana = hardwareKanaOn && fieldPolicy.plane == InputFieldPolicy.Plane.USER_DEFAULT
         val color = me.zssu.ime.settings.ModeIndicatorColors.argb(
             if (kana) settings.modeIndicatorKanaColor else settings.modeIndicatorDirectColor,
         )
@@ -1875,8 +2071,9 @@ class ZinnaImeService : InputMethodService() {
         if (!::settings.isInitialized || !settings.hardwareKanaEnabled) return false
         if (event.deviceId == android.view.KeyCharacterMap.VIRTUAL_KEYBOARD) return false
         if (event.isCtrlPressed || event.isAltPressed || event.isMetaPressed) return false
-        // Passwords, URLs, e-mail addresses and terminals want plain ASCII keys.
-        if (fieldPolicy.plane != InputFieldPolicy.Plane.USER_DEFAULT || fieldPolicy.rawKeyEvents) return false
+        // Passwords and number fields want plain keys. URL, e-mail and terminal fields follow the
+        // user's own kana / direct mode like any other field.
+        if (fieldPolicy.plane != InputFieldPolicy.Plane.USER_DEFAULT) return false
 
         if (Log.isLoggable(TAG, Log.DEBUG)) {
             Log.d(TAG, "hw key code=$keyCode scan=${event.scanCode} shift=${event.isShiftPressed} kana=$hardwareKanaOn composing=$isComposing")

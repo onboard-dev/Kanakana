@@ -98,6 +98,8 @@ private fun InputSettingsScreen(keyTick: Int) {
     var guide by remember { mutableStateOf(settings.flickGuideStyle) }
     var hapticFeedback by remember { mutableStateOf(settings.hapticFeedbackEnabled) }
     var flickPractice by remember { mutableStateOf(settings.flickPracticeCorner) }
+    var practiceShape by remember { mutableStateOf(settings.flickPracticeShape) }
+    var guideTextColor by remember { mutableStateOf(settings.flickGuideTextColor) }
     var hardwareKana by remember { mutableStateOf(settings.hardwareKanaEnabled) }
     var jisSymbols by remember { mutableStateOf(settings.hardwareJisSymbols) }
     var kanaColor by remember { mutableStateOf(settings.modeIndicatorKanaColor) }
@@ -142,7 +144,7 @@ private fun InputSettingsScreen(keyTick: Int) {
                         "Bluetooth などの JIS キーボードで、キーに印字されたかなどおりに入力します。" +
                             "接続中は画面のキーを隠して候補バーだけを表示します(バー右端の ⌨ で画面キーボードを出せます)。" +
                             "切替: 半角/全角 ほか、かなキーでオン、無変換・英数でオフ。" +
-                            "パスワード、URL、メールアドレス欄では英数入力のままです",
+                            "パスワード欄では英数入力のままです",
                         style = MaterialTheme.typography.bodySmall,
                     )
                     FlowRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -236,6 +238,34 @@ private fun InputSettingsScreen(keyTick: Int) {
 
             Card(shape = RoundedCornerShape(14.dp)) {
                 Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text("フリックガイドの文字色", style = MaterialTheme.typography.titleMedium)
+                    Text(
+                        "キーを押したときに出るガイドの文字の色です。背景や、きせかえの色が見にくいときに、白か黒に固定できます。",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    listOf(
+                        me.zssu.ime.keyboard.GuideTextColor.THEME to "テーマの色(初期値)",
+                        me.zssu.ime.keyboard.GuideTextColor.WHITE to "白",
+                        me.zssu.ime.keyboard.GuideTextColor.BLACK to "黒",
+                    ).forEach { (value, label) ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                guideTextColor = value
+                                settings.flickGuideTextColor = value
+                            },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = guideTextColor == value,
+                                onClick = { guideTextColor = value; settings.flickGuideTextColor = value },
+                            )
+                            Text(label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                }
+            }
+            Card(shape = RoundedCornerShape(14.dp)) {
+                Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text("フリック練習モード", style = MaterialTheme.typography.titleMedium)
                     Text(
                         "スワイプ(フリック)入力では、指に隠れて、下フリックの文字が見えません。" +
@@ -259,6 +289,25 @@ private fun InputSettingsScreen(keyTick: Int) {
                             RadioButton(
                                 selected = flickPractice == value,
                                 onClick = { flickPractice = value; settings.flickPracticeCorner = value },
+                            )
+                            Text(label, style = MaterialTheme.typography.bodyLarge)
+                        }
+                    }
+                    Text("表示の形", style = MaterialTheme.typography.titleSmall)
+                    listOf(
+                        me.zssu.ime.keyboard.PracticeShape.TRIANGLE to "▼(70%の大きさ)",
+                        me.zssu.ime.keyboard.PracticeShape.SQUARE to "フルサイズの四角",
+                    ).forEach { (value, label) ->
+                        Row(
+                            Modifier.fillMaxWidth().clickable {
+                                practiceShape = value
+                                settings.flickPracticeShape = value
+                            },
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            RadioButton(
+                                selected = practiceShape == value,
+                                onClick = { practiceShape = value; settings.flickPracticeShape = value },
                             )
                             Text(label, style = MaterialTheme.typography.bodyLarge)
                         }
